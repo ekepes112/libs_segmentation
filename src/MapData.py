@@ -1,4 +1,13 @@
 
+import numpy as np
+import re
+from pathlib import Path
+from tkinter import filedialog
+from random import randint
+import json
+import struct
+import matplotlib.pyplot as plt
+
 class MapData:
   """Class for handling hyperspectral images stored in the .libsdata file format
   """
@@ -7,6 +16,8 @@ class MapData:
       filedialog.askopenfilename(filetypes=[('LIBS data','*.libsdata')])
     )
     self.BYTE_SIZE = 4
+    self.data_type = None
+    self.metadata = None
 
 
   def get_map_dimensions(self):
@@ -34,91 +45,129 @@ class MapData:
       raise ImportError('Metadata file is missing')
     
 
+  def create_data_type(self):
+    """Defines the data_type used for loading in the binary data (takes information from the metadata)
+    """
+    if self.metadata is None: self.get_metadata()
+    self.data_type = np.dtype(
+      [(
+        'data', 
+        np.float32, 
+        self.metadata.get('wavelengths')
+      )]
+    )
+
+
   def load_wavelenths(self):
-    with open(self.file_path,'rb') as source:        
-        self.wvl = []
-        
-        for _ in range(self.metadata.get('wavelengths')):
-          self.wvl.extend(
-            struct.unpack(
-                'f',source.read(self.BYTE_SIZE)
-            )
-          )
-
-        self.wvl = np.array(self.wvl)
+    """Load the wavelength vector from the binary data file
+    """
+    if self.data_type is None: self.create_data_type()
+    self.wvl = np.fromfile(
+      self.file_path,
+      self.data_type,
+      count=1
+    )['data'][0]
 
 
-  def load_batch_of_spectra(self, batch_size, start_ndx):
-    with open(self.file_path,'rb') as source:
+  def load_batch_of_spectra(self, batch_size:int, start_ndx:int):
+    """Load a batch of consecutive spectra from the binary data file
+
+    Args:
+        batch_size (int): number of spectra to load
+        start_ndx (int): index of the first spectrum in the batch (in the whole data file)
+    """
+    if self.data_type is None: self.create_data_type()
+    if batch_size + start_ndx + 1 < self.metadata.get('spectra'):
+      self.batch_spectra = np.fromfile(
+        self.file_path,
+        self.data_type,
+        count=batch_size,
+        offset=(1+start_ndx) * self.metadata.get('wavelengths') * self.BYTE_SIZE #1 for skipping wavelengths
+      )['data']
+    else:
+      print('The chosen batchsize and offset are out of bounds')
+
+
+  def load_random_spectrum_from_batch(self, batch_size:int):
+    """Loads a single spectrum from every batch defined by the batch_size parameter
+
+    Args:
+        batch_size (int): Number of spectra from which 1 is randomly sampled
+    """
+    batch_count = self.metadata.get('spectra') // batch_size
+    debug_log.debug(batch_count)
+
+    data = []
+    with open(self.file_path,'rb') as source:      
       source.seek(
         self.metadata.get('wavelengths') * self.BYTE_SIZE,
-        (1 + start_ndx) * self.metadata.get('wavelengths') * self.BYTE_SIZE
-      )
-
-      data = []
-      for _ in range(self.metadata.get('wavelengths') * batch_size):
-
-        data.extend(
-          struct.unpack(
-            'f',source.read(self.BYTE_SIZE)
-          )
-        )
-
-      self.data = np.reshape(
-          data,
-          (-1,self.metadata.get('wavelengths'))
-      )
-
-
-  def load_random_spectrum_from_batch(self, batch_size):
-    with open(self.file_path,'rb') as source:
-      chosen_ndx = randint(0,batch_size)
-      source.seek(
-        self.metadata.get('wavelengths') * self.BYTE_SIZE * (chosen_ndx + 1),
         0
       )
 
-      data = []
-      for _ in range(self.metadata.get('wavelengths')):
-
-        data.extend(
-          struct.unpack(
-            'f',source.read(self.BYTE_SIZE)
-          )
+      for _ in range(batch_count):
+        ndx = randint(0,batch_size)
+        debug_log.debug(f'{ndx}')
+        
+        source.seek(
+          self.metadata.get('wavelengths') * self.BYTE_SIZE * (ndx - 1),
+          1
         )
-
-      self.data = np.reshape(
-          data,
-          (-1,self.metadata.get('wavelengths'))
-      )
+        
+        for _ in range(self.metadata.get('wavelengths')):
+          data.extend(
+            struct.unpack(
+              'f',
+              source.read(self.BYTE_SIZE)
+            )
+          )
+        
+        if ndx != batch_size:
+          source.seek(
+            self.metadata.get('wavelengths') * self.BYTE_SIZE * (batch_size - ndx - 1),
+            1
+          )
+          
+    self.random_spectra_from_batches = np.reshape(
+        data,
+        (-1,self.metadata.get('wavelengths'))
+    )
 
   
   def load_random_spectrum(self):
-    data = []
-    with open(self.file_path,'rb') as source:
-      chosen_ndx = randint(1,self.metadata.get('spectra'))
-      source.seek(
-        self.metadata.get('wavelengths') * self.BYTE_SIZE * chosen_ndx,
-        0
-      )
-      for _ in range(self.metadata.get('wavelengths')):
-        data.extend(
-          struct.unpack(
-            'f',source.read(self.BYTE_SIZE)
-          )
-        )
-      return(np.array(data))
+    """Load a random spectrum from the whole data file
+    """
+    if self.data_type is None: self.create_data_type()
+    chosen_ndx = randint(1,self.metadata.get('spectra'))
+    self.random_spectrum = np.fromfile(
+      self.file_path,
+      self.data_type,
+      count=1,
+      offset=chosen_ndx * self.metadata.get('wavelengths') * self.BYTE_SIZE
+    )['data'][0]
 
 
   def plot_random_spectrum(self):
-    """plot a random spectrum from the file
+    """load and plot a random spectrum from the file
     """
     fig,ax = plt.subplots()
-    if not self.load_wavelenths:
+    if not hasattr(self,'wvl'):
       self.load_wavelenths()
+
+    self.load_random_spectrum()
 
     ax.plot(
       self.wvl,
-      self.load_random_spectrum()
+      self.random_spectrum
     )
     fig.show()
+
+  
+  def load_all_data(self):
+    """loads all spectra from the file
+    """
+    if self.data_type is None: self.create_data_type()
+    self.spectra = np.fromfile(
+      self.file_path,
+      self.data_type,      
+      offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
+    )['data']
