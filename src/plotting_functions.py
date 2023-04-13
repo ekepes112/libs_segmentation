@@ -136,3 +136,23 @@ def plot_embedding(
 
     if return_figure: return(fig)
     else: return(None)
+
+def plot_single_variable_map(
+    plot_values,
+    file_id
+):
+
+    fig,ax = plt.subplots(1,1,figsize=(3,3))
+    ax.imshow(plot_values)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.axes.set_alpha(0)
+
+    fig.tight_layout()
+    fig.show()
+
+    fig.savefig(
+        f'./temp/{file_id}{segment}.png',
+        transparent=True
+    )
