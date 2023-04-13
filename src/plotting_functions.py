@@ -1,6 +1,10 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
+
+db_logger = logging.getLogger(name='debug')
+db_logger.setLevel(logging.DEBUG)
 
 def plot_embedding(
     embedded_data,
@@ -10,6 +14,9 @@ def plot_embedding(
     return_figure:bool=False
 ):
     PERCENTAGE = 100
+    CM = 1/2.54
+    SUBPLOT_SIDE_SIZE = 5 * CM
+
     if explained_variances is not None: explained_variances *= PERCENTAGE
 
     embedding_dimension = embedded_data.shape[1]
@@ -44,7 +51,8 @@ def plot_embedding(
 
     fig, ax = plt.subplots(
         ncols=col_count,
-        nrows=row_count
+        nrows=row_count,
+        figsize=(col_count * SUBPLOT_SIDE_SIZE, row_count * SUBPLOT_SIDE_SIZE)
     )
 
     if col_count == 1:
