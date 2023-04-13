@@ -159,6 +159,8 @@ class MapData:
       self.wvl,
       self.random_spectrum
     )
+    ax.set_xlabel('Wavelength (nm)')
+    ax.set_ylabel('Intensity (counts)')
     fig.show()
 
   
