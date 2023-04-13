@@ -146,7 +146,7 @@ class MapData:
     )['data'][0]
 
 
-  def plot_random_spectrum(self):
+  def plot_random_spectrum(self,return_fig:bool=False):
     """load and plot a random spectrum from the file
     """
     fig,ax = plt.subplots()
@@ -162,6 +162,9 @@ class MapData:
     ax.set_xlabel('Wavelength (nm)')
     ax.set_ylabel('Intensity (counts)')
     fig.show()
+
+    if return_fig: return(fig) 
+    else: return(None)
 
   
   def load_all_data(self):
