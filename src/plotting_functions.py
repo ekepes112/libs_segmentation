@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
+import plotly.graph_objects as go
 
 db_logger = logging.getLogger(name='debug')
 db_logger.setLevel(logging.DEBUG)
@@ -146,10 +147,18 @@ def plot_embedding(
 
 def plot_single_variable_map(
     plot_values,
-    file_id
+    file_id,
+    save_cond=True,
+    fig_size_scaling=1
 ):
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(
+        1, 1,
+        figsize=(
+            3*fig_size_scaling,
+            3*fig_size_scaling
+        )
+    )
     ax.imshow(plot_values)
 
     ax.set_xticks([])
@@ -159,7 +168,50 @@ def plot_single_variable_map(
     fig.tight_layout()
     fig.show()
 
-    fig.savefig(
-        f'./temp/{file_id}.png',
-        transparent=True
+    if save_cond:
+        fig.savefig(
+            f'./temp/{file_id}.png',
+            transparent=True
+        )
+
+
+def _update_layout(
+    figure: go.Figure,
+    x: str = 'Wavelength (nm)',
+    y: str = 'Intensity (-)'
+) -> go.Figure:
+    return (
+        figure.update_layout(
+            legend=dict(
+                x=.99,
+                y=.95,
+                yanchor="top",
+                xanchor="right"
+            ),
+            margin=dict(
+                t=50,
+                b=60,
+                l=60,
+                r=10
+            ),
+            xaxis=dict(
+                title=x,
+                linecolor='rgba(25,25,25,.4)',
+                mirror=True,
+                linewidth=2,
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(77,77,77,.1)'
+            ),
+            yaxis=dict(
+                title=y,
+                linecolor='rgba(25,25,25,.4)',
+                mirror=True,
+                linewidth=2,
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(77,77,77,.1)'
+            ),
+            plot_bgcolor="#FFF"
+        )
     )
