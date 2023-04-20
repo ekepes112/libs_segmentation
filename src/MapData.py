@@ -1,4 +1,3 @@
-
 import numpy as np
 import re
 from pathlib import Path
@@ -186,3 +185,4 @@ class MapData:
         trim_width: int
     ):
         self.spectra = self.spectra[:, trim_width:-trim_width]
+        self.wvl = self.wvl[trim_width:-trim_width]
