@@ -1,3 +1,4 @@
 pyenv_*/
 /temp
 /output
+/src/__pycache__
