@@ -38,7 +38,6 @@ class MapData:
             with open(
                 self.file_path.with_suffix('.libsmetadata'), 'r'
             ) as file:
-
                 self.metadata = json.load(file)
         else:
             raise ImportError('Metadata file is missing')
