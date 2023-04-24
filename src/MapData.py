@@ -28,6 +28,7 @@ class MapData:
         self.metadata = None
         self.random_spectra_from_batches = None
         self.random_spectrum = None
+        self.baselines = None
 
     def get_map_dimensions(self):
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
@@ -207,3 +208,42 @@ class MapData:
         kernel = np.exp(-(kernel ** 2) / (2 * sigma**2))
         kernel /= kernel.sum()
         return kernel
+
+    def get_baseline(
+        self,
+        min_window_size: int = 50,
+        smooth_window_size: int = None
+    ):
+        if smooth_window_size is None:
+            smooth_window_size = 2*min_window_size
+
+        local_minima = self._rolling_min(
+            arr=np.hstack(
+                [self.spectra[:, 0][:, np.newaxis]] *
+                ((min_window_size + smooth_window_size) // 2)
+                + [self.spectra]
+                + [self.spectra[:, -1][:, np.newaxis]] *
+                ((min_window_size + smooth_window_size) // 2)
+            ),
+            window_width=min_window_size
+        )
+
+        self.baselines = np.apply_along_axis(
+            arr=local_minima,
+            func1d=np.convolve,
+            axis=1,
+            v=self._get_smoothing_kernel(smooth_window_size),
+            mode='valid'
+        )
+
+    def align_baselines_with_spectra(self):
+        self.baselines = self.baselines[
+            :,
+            :-(self.baselines.shape[1] - self.spectra.shape[1])
+        ]
+
+    def baseline_correct(sefl):
+        self.spectra = np.subtract(
+            self.spectra,
+            self.baselines
+        )
