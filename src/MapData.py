@@ -13,10 +13,16 @@ class MapData:
     """Class for handling hyperspectral images stored in the .libsdata file format
     """
 
-    def __init__(self):
-        self.file_path = Path(
-            filedialog.askopenfilename(filetypes=[('LIBS data', '*.libsdata')])
-        )
+    def __init__(self, file_path: str = None):
+        if file_path is None:
+            self.file_path = Path(
+                filedialog.askopenfilename(
+                    filetypes=[('LIBS data', '*.libsdata')]
+                )
+            )
+        else:
+            self.file_path = Path(file_path)
+
         self.BYTE_SIZE = 4
         self.data_type = None
         self.metadata = None
