@@ -1,8 +1,8 @@
+import re
+from tkinter import filedialog
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
-import re
 from pathlib import Path
-from tkinter import filedialog
 from random import randint
 import json
 import struct
@@ -29,6 +29,9 @@ class MapData:
         self.random_spectra_from_batches = None
         self.random_spectrum = None
         self.baselines = None
+        self.spectra = None
+        self.wvl = None
+        self.map_dimensions = None
 
     def get_map_dimensions(self):
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
@@ -39,7 +42,7 @@ class MapData:
         )[0].split('x')
 
         self.map_dimensions = [int(x) for x in map_dimensions]
-
+ak
     def get_metadata(self):
         """Load metadata from the metadata file corresponding to the selected data file
         """
