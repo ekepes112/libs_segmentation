@@ -19,6 +19,8 @@ class MapData:
         self.BYTE_SIZE = 4
         self.data_type = None
         self.metadata = None
+        self.random_spectra_from_batches = None
+        self.random_spectrum = None
 
     def get_map_dimensions(self):
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
