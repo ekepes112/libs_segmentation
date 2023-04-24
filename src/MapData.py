@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 import re
 from pathlib import Path
 from tkinter import filedialog
@@ -166,9 +167,9 @@ class MapData:
         fig.show()
 
         if return_fig:
-            return (fig)
+            return fig
         else:
-            return (None)
+            return None
 
     def load_all_data(self):
         """loads all spectra from the file
@@ -187,3 +188,16 @@ class MapData:
     ):
         self.spectra = self.spectra[:, trim_width:-trim_width]
         self.wvl = self.wvl[trim_width:-trim_width]
+
+    @staticmethod
+    def _rolling_min(arr, window_width):
+        window = sliding_window_view(arr, window_width)
+        return np.amin(window, axis=1)
+
+    @staticmethod
+    def _get_smoothing_kernel(window_width):
+        kernel = np.arange(-window_width//2, window_width//2 + 1, 1)
+        sigma = window_width // 4
+        kernel = np.exp(-(kernel ** 2) / (2 * sigma**2))
+        kernel /= kernel.sum()
+        return kernel
