@@ -42,7 +42,7 @@ class MapData:
         )[0].split('x')
 
         self.map_dimensions = [int(x) for x in map_dimensions]
-ak
+
     def get_metadata(self):
         """Load metadata from the metadata file corresponding to the selected data file
         """
