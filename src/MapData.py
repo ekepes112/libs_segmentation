@@ -246,8 +246,14 @@ class MapData:
             :-(self.baselines.shape[1] - self.spectra.shape[1])
         ]
 
-    def baseline_correct(sefl):
+    def baseline_correct(
+        self,
+        keep_baselines: bool = False
+    ):
         self.spectra = np.subtract(
             self.spectra,
             self.baselines
         )
+
+        if not keep_baselines:
+            del self.baselines
