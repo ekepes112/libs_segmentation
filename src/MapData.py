@@ -198,8 +198,12 @@ class MapData:
 
     @staticmethod
     def _rolling_min(arr, window_width):
-        window = sliding_window_view(arr, window_width)
-        return np.amin(window, axis=1)
+        window = sliding_window_view(
+            arr,
+            (window_width,),
+            axis=len(arr.shape) - 1
+        )
+        return np.amin(window, axis=len(arr.shape))
 
     @staticmethod
     def _get_smoothing_kernel(window_width):
