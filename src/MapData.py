@@ -292,7 +292,7 @@ class MapData:
         Args:
             keep_baselines (bool, optional): _description_. Defaults to False.
         """
-        if not self.baselines:
+        if self.baselines is None:
             self.get_baseline()
 
         self.spectra = np.subtract(
@@ -350,7 +350,7 @@ class MapData:
         Returns:
             _type_: _description_
         """
-        data = data.reshape(self.map_dimensions[::-1])
+        data = data.copy().reshape(self.map_dimensions[::-1])
         data[::2, :] = data[::2, ::-1]
 
         return data
