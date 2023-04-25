@@ -194,7 +194,8 @@ def plot_single_variable_map(
     if file_id:
         fig.savefig(
             f'./temp/{file_id}.png',
-            transparent=True
+            transparent=True,
+            dpi=300
         )
 
 
