@@ -198,31 +198,61 @@ class MapData:
         self,
         trim_width: int
     ):
+        """Removes the edges of the spectra. To be used if the intensity abruptly drops towards the ends.
+
+        Args:
+            trim_width (int): The number of pixels to drop at both the beginning and end of every spectrum.
+        """
         self.spectra = self.spectra[:, trim_width:-trim_width]
         self.wvl = self.wvl[trim_width:-trim_width]
 
     @staticmethod
-    def _rolling_min(arr, window_width):
+    def _rolling_min(arr: np.array, window_width: int) -> np.array:
+        """Calculates the moving minima in each row of the provided array.
+
+        Args:
+            arr (np.array): A 2D array with each row representing a spectrum.
+            window_width (int): The width of the window where the minimum is to be found.
+
+        Returns:
+            np.array: A 2D array of the moving minima.
+        """
         window = sliding_window_view(
             arr,
             (window_width,),
             axis=len(arr.shape) - 1
         )
+
         return np.amin(window, axis=len(arr.shape))
 
     @staticmethod
-    def _get_smoothing_kernel(window_width):
+    def _get_smoothing_kernel(window_width: int) -> np.array:
+        """Generates a Gaussian smoothin kernel of the desired width.
+
+        Args:
+            window_width (int): Width of the kernel (length of the resulting vector).
+
+        Returns:
+            np.array: A Gaussian distribution with it's center at the vectors middle.
+        """
         kernel = np.arange(-window_width//2, window_width//2 + 1, 1)
         sigma = window_width // 4
         kernel = np.exp(-(kernel ** 2) / (2 * sigma**2))
         kernel /= kernel.sum()
+
         return kernel
 
     def get_baseline(
         self,
         min_window_size: int = 50,
         smooth_window_size: int = None
-    ):
+    ) -> None:
+        """Determines the spectra's baselines.
+
+        Args:
+            min_window_size (int, optional): Width of the rolling minimum function. Defaults to 50.
+            smooth_window_size (int, optional): Width of the smoothing function. Defaults to None.
+        """
         if smooth_window_size is None:
             smooth_window_size = 2*min_window_size
 
@@ -246,6 +276,8 @@ class MapData:
         )
 
     def align_baselines_with_spectra(self):
+        """Discards the last few pixels of the determined baselines if they are longer than the corresponding spectra.
+        """
         self.baselines = self.baselines[
             :,
             :-(self.baselines.shape[1] - self.spectra.shape[1])
@@ -255,6 +287,14 @@ class MapData:
         self,
         keep_baselines: bool = False
     ):
+        """_summary_
+
+        Args:
+            keep_baselines (bool, optional): _description_. Defaults to False.
+        """
+        if not self.baselines:
+            self.get_baseline()
+
         self.spectra = np.subtract(
             self.spectra,
             self.baselines
@@ -263,6 +303,8 @@ class MapData:
         if not keep_baselines:
             del self.baselines
 
+        self.align_baselines_with_spectra()
+
     def get_emission_line_intensities(
         self,
         left_boundaries: list,
@@ -270,6 +312,17 @@ class MapData:
         line_centers: list,
         intensity_func: Callable
     ):
+        """_summary_
+
+        Args:
+            left_boundaries (list): _description_
+            right_boundaries (list): _description_
+            line_centers (list): _description_
+            intensity_func (Callable): _description_
+
+        Raises:
+            ValueError: _description_
+        """
         if len(left_boundaries) != len(right_boundaries) != len(line_centers):
             raise ValueError('incompatible lists provided')
 
