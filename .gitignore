@@ -2,3 +2,4 @@ pyenv_*/
 /temp
 /output
 /src/__pycache__
+/data
