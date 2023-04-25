@@ -145,11 +145,21 @@ def plot_embedding(
 
 
 def plot_single_variable_map(
-    plot_values,
-    file_id,
-    save_cond=True,
-    fig_size_scaling=1
+    plot_values: np.array,
+    file_id: str = None,
+    figure_title: str = None,
+    colorbar_title: str = None,
+    fig_size_scaling: float = 1.,
+    cutoff_quantile: float = .99
 ):
+    counts, bin_centers = np.histogram(
+        plot_values,
+        bins=100
+    )
+    total_counts = np.sum(counts)
+    cutoff_bin = bin_centers[:-1][
+        np.cumsum(counts) >= (total_counts * cutoff_quantile)
+    ][0]
 
     fig, ax = plt.subplots(
         1, 1,
@@ -158,16 +168,30 @@ def plot_single_variable_map(
             3*fig_size_scaling
         )
     )
-    ax.imshow(plot_values)
+
+    image = ax.imshow(
+        plot_values,
+        cmap='plasma',
+        interpolation='bicubic',
+        interpolation_stage='rgba',
+        vmin=bin_centers[0]*(1-cutoff_quantile),
+        vmax=cutoff_bin
+    )
 
     ax.set_xticks([])
     ax.set_yticks([])
     ax.axes.set_alpha(0)
 
+    color_bar = fig.colorbar(image)
+    if colorbar_title:
+        color_bar.ax.set_title(colorbar_title)
+    if figure_title:
+        fig.suptitle(figure_title)
+
     fig.tight_layout()
     fig.show()
 
-    if save_cond:
+    if file_id:
         fig.savefig(
             f'./temp/{file_id}.png',
             transparent=True
