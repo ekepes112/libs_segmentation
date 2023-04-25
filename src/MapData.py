@@ -7,6 +7,7 @@ from random import randint
 import json
 import struct
 import matplotlib.pyplot as plt
+from typing import Callable
 
 
 class MapData:
@@ -32,6 +33,7 @@ class MapData:
         self.spectra = None
         self.wvl = None
         self.map_dimensions = None
+        self.line_intensities = None
 
     def get_map_dimensions(self):
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
@@ -260,3 +262,26 @@ class MapData:
 
         if not keep_baselines:
             del self.baselines
+
+    def get_emission_line_intensities(
+        self,
+        left_boundaries: list,
+        right_boundaries: list,
+        line_centers: list,
+        intensity_func: Callable
+    ):
+        if len(left_boundaries) != len(right_boundaries) != len(line_centers):
+            raise ValueError('incompatible lists provided')
+
+        self.line_intensities = dict()
+        for line_center, left_bound, right_bound in zip(
+            line_centers,
+            left_boundaries,
+            right_boundaries
+        ):
+            self.line_intensities[
+                f'{self.wvl[line_center]:.2f}'
+            ] = intensity_func(
+                self.spectra[:, left_bound:right_bound],
+                axis=1
+            )
