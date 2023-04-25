@@ -338,3 +338,19 @@ class MapData:
                 self.spectra[:, left_bound:right_bound],
                 axis=1
             )
+
+    def vector_to_array(
+        self, data: np.array
+    ):
+        """_summary_
+
+        Args:
+            data (np.array): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        data = data.reshape(self.map_dimensions[::-1])
+        data[::2, :] = data[::2, ::-1]
+
+        return data
