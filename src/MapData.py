@@ -295,6 +295,8 @@ class MapData:
         if self.baselines is None:
             self.get_baseline()
 
+        self.align_baselines_with_spectra()
+
         self.spectra = np.subtract(
             self.spectra,
             self.baselines
@@ -302,8 +304,6 @@ class MapData:
 
         if not keep_baselines:
             del self.baselines
-
-        self.align_baselines_with_spectra()
 
     def get_emission_line_intensities(
         self,

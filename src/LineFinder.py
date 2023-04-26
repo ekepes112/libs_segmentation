@@ -2,19 +2,22 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from scipy.signal import find_peaks
-from src.plotting_functions import _update_layout
 from pathlib import Path
+try:
+    from src.plotting_functions import _update_layout
+except:
+    from plotting_functions import _update_layout
+
 
 class LineFinder():
     """_summary_
     """
 
-
     def __init__(
         self,
-        spectrum:np.array,
-        wvl:np.array,
-        name:str,
+        spectrum: np.array,
+        wvl: np.array,
+        name: str,
         **kwargs
     ):
         """_summary_
@@ -28,16 +31,15 @@ class LineFinder():
         self.wvl = wvl.copy()
         self.name = name
 
-
     def find_lines(
-        self,        
-        height:float=(0,1),
-        prominence:float=None,
-        distance:int=None,
-        width:int=None,
-        threshold:float=None,
-        rel_height:float=None,
-        wlen:int=None,
+        self,
+        height: float = (0, 1),
+        prominence: float = None,
+        distance: int = None,
+        width: int = None,
+        threshold: float = None,
+        rel_height: float = None,
+        wlen: int = None,
     ) -> None:
         """Wrapper around the scikit.signal find_peaks function.
         """
@@ -52,10 +54,9 @@ class LineFinder():
             wlen=wlen
         )
 
-
     def plot_found_lines(
         self,
-        show_cond:bool=True
+        show_cond: bool = True
     ) -> None:
         """Marks the found emission lines (their maxima) in the spectrum and frames them using the left and right boundaries found by the peak finder.
 
@@ -89,7 +90,7 @@ class LineFinder():
 
         self.plot = _update_layout(self.plot)
 
-        for line_ndx,emission_line_data in enumerate(zip(
+        for line_ndx, emission_line_data in enumerate(zip(
             self.peaks[1]['left_bases'],
             self.peaks[1]['peak_heights'],
             self.peaks[1]['right_bases'],
@@ -106,16 +107,16 @@ class LineFinder():
                 fillcolor=rect_color
             )
 
-        if show_cond: self.plot.show()
-
+        if show_cond:
+            self.plot.show()
 
     def add_spectrum_to_plot(
         self,
-        spectrum:np.array,
-        name:str,
-        wvl:np.array=None,
-        scale:bool=True,
-        show_cond:bool=True
+        spectrum: np.array,
+        name: str,
+        wvl: np.array = None,
+        scale: bool = True,
+        show_cond: bool = True
     ) -> None:
         """Add a new spectrum to the existing plot.
 
@@ -132,10 +133,12 @@ class LineFinder():
             print('creating base plot')
             self.plot_found_lines(False)
 
-        if wvl is None: wvl = self.wvl
+        if wvl is None:
+            wvl = self.wvl
 
         spectrum = spectrum.copy()
-        if scale: spectrum *= np.max(self.spectrum)
+        if scale:
+            spectrum *= np.max(self.spectrum)
 
         self.plot.add_trace(
             go.Scatter(
@@ -146,16 +149,16 @@ class LineFinder():
             )
         )
 
-        if show_cond: self.plot.show()
-
+        if show_cond:
+            self.plot.show()
 
     def find_peaks_in_reference(
         self,
-        spectrum:np.array=None,
-        name:str=None,
-        wvl:np.array=None,
-        scale:bool=True,
-        show_cond:bool=True
+        spectrum: np.array = None,
+        name: str = None,
+        wvl: np.array = None,
+        scale: bool = True,
+        show_cond: bool = True
     ) -> None:
         """Compares the emission lines found in the initial spectrum and compares to a reference spectrum. Creates a list of indices corresponding to the emission line centers in the reference spectrum.
 
@@ -177,14 +180,15 @@ class LineFinder():
             print('performing line finding')
             self.find_lines()
 
-        if wvl is None: wvl = self.wvl
-        if spectrum is None: 
+        if wvl is None:
+            wvl = self.wvl
+        if spectrum is None:
             spectrum = self.spectrum
             name = self.name
 
         self.reference_peak_indices = []
 
-        for left_ndx,right_ndx in zip(
+        for left_ndx, right_ndx in zip(
             self.peaks[1]['left_bases'],
             self.peaks[1]['right_bases'],
         ):
@@ -193,7 +197,8 @@ class LineFinder():
             )
 
         spectrum = spectrum.copy()
-        if scale: spectrum *= np.max(self.spectrum)
+        if scale:
+            spectrum *= np.max(self.spectrum)
 
         self.plot.add_trace(
             go.Scatter(
@@ -203,7 +208,7 @@ class LineFinder():
                 name=name
             )
         )
-            
+
         self.plot.add_trace(
             go.Scatter(
                 x=wvl[self.reference_peak_indices],
@@ -213,15 +218,16 @@ class LineFinder():
             )
         )
 
-        if show_cond: self.plot.show()
+        if show_cond:
+            self.plot.show()
 
     @staticmethod
     def _update_layout(
-        figure:go.Figure,
-        x:str='Wavelength (nm)',
-        y:str='Intensity (-)'
+        figure: go.Figure,
+        x: str = 'Wavelength (nm)',
+        y: str = 'Intensity (-)'
     ) -> go.Figure:
-        """Updates a figures layout according to a hard-coded style. 
+        """Updates a figures layout according to a hard-coded style.
 
         Args:
             figure (go.Figure): The input figure, whose layout is to be updated.
@@ -231,7 +237,7 @@ class LineFinder():
         Returns:
             go.Figure: The figure with the updated layout.
         """
-        return(
+        return (
             figure.update_layout(
                 legend=dict(
                     x=.99,
@@ -269,10 +275,10 @@ class LineFinder():
 
     @staticmethod
     def _get_potential_lines(
-        wvl:float,
-        line_tables:pd.DataFrame,
-        line_shift_margin:float=.2,
-        verbose:bool=True
+        wvl: float,
+        line_tables: pd.DataFrame,
+        line_shift_margin: float = .2,
+        verbose: bool = True
     ) -> pd.DataFrame:
         """Matches a wvl value against a dataframe of emission lines (from NIST) and returns all emission lines in the vicinity.
 
@@ -298,19 +304,19 @@ class LineFinder():
         potential_lines = line_tables.loc[
             potential_line_cond,
             # 'Ei(cm-1)',
-            ['element','sp_num','obs_wl_air(nm)','intens','Aki(s^-1)','Ek(cm-1)','g_k']
+            ['element', 'sp_num',
+                'obs_wl_air(nm)', 'intens', 'Aki(s^-1)', 'Ek(cm-1)', 'g_k']
         ]
 
         if verbose:
             print(potential_lines)
 
-        return(potential_lines)
-
+        return (potential_lines)
 
     def match_peaks_to_tables(
-        self,        
-        verbose:bool=False,
-        line_shift_margin:float=.2
+        self,
+        verbose: bool = False,
+        line_shift_margin: float = .2
     ):
         """Gets the potential emission lines for each peak center found in the spectrum.
 
@@ -318,7 +324,7 @@ class LineFinder():
             verbose (bool, optional): Whether to print the found emission lines. Defaults to False.
         """
         self.potential_lines = {
-            x:self._get_potential_lines(
+            x: self._get_potential_lines(
                 x,
                 line_tables=self.line_tables,
                 line_shift_margin=line_shift_margin,
@@ -328,11 +334,10 @@ class LineFinder():
             in self.wvl[self.reference_peak_indices]
         }
 
-
     @staticmethod
     def _get_vline_hover_coords(
-        input_figure:go.Figure,
-        coord_count:int
+        input_figure: go.Figure,
+        coord_count: int
     ) -> np.array:
         """Creates a vector of <coord_count> values between the lowest and highest value found in the <input_figure> across all its traces.
 
@@ -359,12 +364,12 @@ class LineFinder():
             )
         )
 
-        return(np.linspace(min_y,max_y,coord_count))
-    
+        return (np.linspace(min_y, max_y, coord_count))
+
     @staticmethod
     def _get_hover_text(
-        detected_wvl:float,
-        print_data:pd.DataFrame
+        detected_wvl: float,
+        print_data: pd.DataFrame
     ) -> str:
         """_summary_
 
@@ -376,16 +381,16 @@ class LineFinder():
             str: _description_
         """
         if print_data is None:
-            return('unknown')
-        
+            return ('unknown')
+
         print_data = print_data\
-            .sort_values(['intens','sp_num'])\
-            .groupby(['element','sp_num'])\
+            .sort_values(['intens', 'sp_num'])\
+            .groupby(['element', 'sp_num'])\
             .head(1)\
-            .sort_values('intens',ascending=False)
+            .sort_values('intens', ascending=False)
 
         print_header = 'line | NIST intensity | E<sub>k</sub> (cm<sup>-1</sup>) | A<sub>ki</sub> (s<sup>-1</sup>)'
-        
+
         full_hover_text = '{:.2f} :: <br> {} <br> {}'.format(
             detected_wvl,
             print_header,
@@ -393,12 +398,12 @@ class LineFinder():
         )
 
         for ndx in print_data.index:
-            print_element = print_data.loc[ndx,'element']
-            print_ionization = 'I'*print_data.loc[ndx,'sp_num']
-            print_linecenter = print_data.loc[ndx,'obs_wl_air(nm)']
-            print_intens = print_data.loc[ndx,'intens']
-            print_Ek = print_data.loc[ndx,'Ek(cm-1)']
-            print_Aki = print_data.loc[ndx,'Aki(s^-1)']
+            print_element = print_data.loc[ndx, 'element']
+            print_ionization = 'I'*print_data.loc[ndx, 'sp_num']
+            print_linecenter = print_data.loc[ndx, 'obs_wl_air(nm)']
+            print_intens = print_data.loc[ndx, 'intens']
+            print_Ek = print_data.loc[ndx, 'Ek(cm-1)']
+            print_Aki = print_data.loc[ndx, 'Aki(s^-1)']
 
             hover_text = '{} {} {:.2f} nm | {} | {} | {}'.format(
                 print_element,
@@ -414,13 +419,12 @@ class LineFinder():
         if len(full_hover_text) == 0:
             full_hover_text = 'unknown'
 
-        return(full_hover_text)
-
+        return (full_hover_text)
 
     def plot_potential_lines(
         self,
-        coord_count:int=100,
-        show_cond:bool=True
+        coord_count: int = 100,
+        show_cond: bool = True
     ) -> None:
         """_summary_
 
@@ -443,9 +447,9 @@ class LineFinder():
             self.find_lines()
         try:
             getattr(self, 'potential_lines')
-        except AttributeError:            
+        except AttributeError:
             raise AttributeError(
-                '''peaks must be matched to reference tables first 
+                '''peaks must be matched to reference tables first
                 via match_peaks_to_tables()'''
             )
 
@@ -455,7 +459,8 @@ class LineFinder():
             if trace['name'] != 'Found peaks':
                 self.potential_lines_fig.add_trace(trace)
 
-        self.potential_lines_fig = self._update_layout(self.potential_lines_fig)
+        self.potential_lines_fig = self._update_layout(
+            self.potential_lines_fig)
 
         for line in self.potential_lines:
             self.potential_lines_fig.add_vline(
@@ -482,19 +487,19 @@ class LineFinder():
                     )
                 )
             )
-            
-        if show_cond: self.potential_lines_fig.show()
 
+        if show_cond:
+            self.potential_lines_fig.show()
 
     def load_nist_tables(
         self,
-        source_path:Path
+        source_path: Path
     ):
         table_files = pd.DataFrame(
             source_path.glob('*.txt'),
             columns=['file']
         )
-        table_files.index=map(
+        table_files.index = map(
             lambda x: x.stem,
             source_path.glob('*.txt')
         )
@@ -502,7 +507,7 @@ class LineFinder():
         line_tables = []
         for element in table_files.index:
             line_table = pd.read_csv(
-                table_files.loc[element,'file']
+                table_files.loc[element, 'file']
             )
             line_table.replace(
                 r'[="\*:]', '',
@@ -510,11 +515,11 @@ class LineFinder():
                 inplace=True
             )
             line_table.replace(
-                '',np.nan,
+                '', np.nan,
                 inplace=True
             )
             line_table['intens'].replace(
-                '[a-z]','',
+                '[a-z]', '',
                 regex=True,
                 inplace=True
             )
@@ -525,9 +530,9 @@ class LineFinder():
             line_table['intens'] = list(map(
                 float,
                 line_table['intens'].replace(
-                    '[^0-9]','',
+                    '[^0-9]', '',
                     regex=True
-                ).replace('',np.nan)
+                ).replace('', np.nan)
             ))
 
             line_table['Aki(s^-1)'] = list(map(
@@ -540,7 +545,7 @@ class LineFinder():
             )
 
             line_table = line_table.loc[
-                (line_table['obs_wl_air(nm)'] >= self.wvl.min()) & \
+                (line_table['obs_wl_air(nm)'] >= self.wvl.min()) &
                 (line_table['obs_wl_air(nm)'] <= self.wvl.max()),
             ]
             line_tables.append(line_table)
