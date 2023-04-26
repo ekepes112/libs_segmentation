@@ -68,58 +68,120 @@ map_data.get_emission_line_intensities(
     intensity_func=np.max
 )
 
+def process(
+    model,
+    model_type: str,
+    model_id: str,
+    data
+):
+    model_id = f'{model_type.lower()}{model_id}'
+    print(f'{model_type} - embedding')
+    embeddings = model.fit_transform(data)
+    ### plotting
+    fig = plot_embedding(
+        embeddings,
+        # explained_variances=model.explained_variance_ratio_.copy(),
+        # colors=predicted_labels[clustering_method],
+        marker_size=8,
+        return_figure=True
+    )
+    fig.suptitle(
+        f'{model_type} {LATENT_SPACE_DIM} comp.; emission lines'
+    )
+    fig.patch.set_alpha(0)
+    fig.tight_layout()
+    fig.savefig(
+        f'./temp/{model_id}.png',
+        transparent=True
+    )
+    ### saving model and embeddings
+    print(f'{model_type} - saving model')
+    dump(
+        model,
+        f'./temp/{model_id}.joblib'
+    )
+    print(f'{model_type} - saving embeddings')
+    np.save(
+        file=f'./temp/embeddings_{model_id}.npy',
+        arr=embeddings
+    )
+
+    plt.close()
+
+    return None
+
 # Embeddings
 LATENT_SPACE_DIM = 3
 ## PCA from emission lines ----------------------------------------------
-model_id = f'pca_{file_name}_from_lines_{time():.0f}'
-
-pca_model = PCA(LATENT_SPACE_DIM)
-
-print('PCA - embedding')
-embeddings = pca_model.fit_transform(
-    pd.DataFrame(map_data.line_intensities)
+process(
+    model=PCA(LATENT_SPACE_DIM),
+    model_type='PCA',
+    model_id=f'_{file_name}_from_lines_{time():.0f}',
+    data=pd.DataFrame(map_data.line_intensities)
 )
-### plotting
-fig = plot_embedding(
-    embeddings,
-    explained_variances=pca_model.explained_variance_ratio_.copy(),
-    # colors=predicted_labels[clustering_method],
-    marker_size=8,
-    return_figure=True
+## PCA from whole spectra ----------------------------------------------
+process(
+    model=PCA(LATENT_SPACE_DIM),
+    model_type='PCA',
+    model_id=f'_{file_name}_from_spectra_{time():.0f}',
+    data=pd.DataFrame(map_data.spectra)
 )
-fig.suptitle(
-    f'PCA {LATENT_SPACE_DIM} comp.; emission lines'
-)
-fig.patch.set_alpha(0)
-fig.tight_layout()
-fig.savefig(
-    f'./temp/{model_id}.png',
-    transparent=True
-)
-### saving model and embeddings
-print('PCA - saving model')
-dump(
-    pca_model,
-    f'./temp/{model_id}.joblib'
-)
-print('PCA - saving embeddings')
-np.save(
-    file=f'./temp/embeddings_{model_id}.npy',
-    arr=embeddings
-)
-
-# # TSNE
-# tsne_model = TSNE(
-#     n_components=3,
-#     perplexity=30,
-#     learning_rate=200
-# )
-# embeddings = tsne_model.fit_transform(
-#     pd.DataFrame(map_data.line_intensities)
-# )
-
-# # UMAP
-# umap_model = UMAP(n_components=3, n_neighbors=30, min_dist=0.5)
-# embeddings = umap_model.fit_transform(
-#     pd.DataFrame(map_data.line_intensities)
-# )
+## tSNE from emission lines ----------------------------------------------
+for perp in [5,10,20,30,50]:
+    process(
+        model=TSNE(
+            n_components=LATENT_SPACE_DIM,
+            perplexity=perp,
+            learning_rate='auto',
+            random_state=97481
+        ),
+        model_type='tSNE',
+        model_id=f'_{file_name}_from_lines_{time():.0f}',
+        data=pd.DataFrame(map_data.line_intensities)
+    )
+    ## tSNE from whole spectra ----------------------------------------------
+    process(
+        model=TSNE(
+            n_components=LATENT_SPACE_DIM,
+            perplexity=perp,
+            learning_rate='auto',
+            random_state=97481
+        ),
+        model_type='tSNE',
+        model_id=f'_{file_name}_from_spectra_{time():.0f}',
+        data=pd.DataFrame(map_data.spectra)
+    )
+## UMAP from emission lines ----------------------------------------------
+for metric in ['cosine','euclidean']:
+    for nn in [5,15,30,50]:
+        process(
+            model=UMAP(
+                n_components=LATENT_SPACE_DIM,
+                n_neighbors=nn,
+                min_dist=0.1, #default
+                metric=metric,
+                output_metric='euclidean', #default
+                n_epochs=200,
+                learning_rate=1, #default
+                random_state=97481
+            ),
+            model_type='UMAP',
+            model_id=f'_{file_name}_from_lines_{time():.0f}',
+            data=pd.DataFrame(map_data.line_intensities)
+        )
+        ## UMAP from whole spectra ----------------------------------------------
+        process(
+            model=UMAP(
+                n_components=LATENT_SPACE_DIM,
+                n_neighbors=nn,
+                min_dist=0.1, #default
+                metric=metric,
+                output_metric='euclidean', #default
+                n_epochs=200,
+                learning_rate=1, #default
+                random_state=97481
+            ),
+            model_type='UMAP',
+            model_id=f'_{file_name}_from_spectra_{time():.0f}',
+            data=pd.DataFrame(map_data.spectra)
+        )
