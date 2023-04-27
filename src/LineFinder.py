@@ -134,12 +134,9 @@ class LineFinder():
             scale (bool, optional): Whether to scale the new spectrum by the initial spectrum's maximum. Defaults to True.
             show_cond (bool, optional): Whether to show the updated figure. Defaults to True.
         """
-        try:
-            getattr(self, 'plot')
-        except AttributeError:
+        if self.plot is None:
             print('creating base plot')
             self.plot_found_lines(False)
-
         if wvl is None:
             wvl = self.wvl
 
@@ -176,9 +173,7 @@ class LineFinder():
             scale (bool, optional): Whether to scale the new spectrum by the initial spectrum's maximum. Defaults to True.
             show_cond (bool, optional): Whether to show the updated figure. Defaults to True.
         """
-        try:
-            getattr(self, 'plot')
-        except AttributeError:
+        if self.plot is None:
             print('creating base plot')
             self.plot_found_lines(False)
         try:
