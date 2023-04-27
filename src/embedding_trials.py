@@ -19,13 +19,13 @@ from time import time
 
 file_name = '2022_03_22_P56B_307x532'
 
-map_data = MapData(f'./data/{file_name}.libsdata')
+map_data = MapData(f'./data/Rakoviny/P56B/{file_name}.libsdata')
 map_data.get_metadata()
 map_data.load_wavelenths()
 print('loading data')
 map_data.load_all_data()
 ##################
-map_data.spectra = map_data.spectra[:200,:]
+# map_data.spectra = map_data.spectra[:200,:]
 ##################
 map_data.get_map_dimensions()
 map_data.trim_spectra(64)
@@ -48,7 +48,7 @@ line_finder.find_lines(
     rel_height=1.2,
 )
 line_finder.load_nist_tables(
-    Path('C:/Users/kepes/OneDrive - Vysoké učení technické v Brně/projects/marsData/inventory/nistTables')
+    Path('D:/OneDrive - Vysoké učení technické v Brně/projects/marsData/inventory/nistTables')
 )
 line_finder.find_peaks_in_reference(
     maxima_spectrum,
