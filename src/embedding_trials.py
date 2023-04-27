@@ -44,7 +44,7 @@ line_finder.find_lines(
     height=250,
     threshold=None,
     distance=None,
-    prominence=200,
+    prominence=250,
     width=3,
     wlen=27,
     rel_height=1.2,
