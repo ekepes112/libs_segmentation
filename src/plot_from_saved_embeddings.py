@@ -49,3 +49,5 @@ for file_name in Path('./temp').glob('*.npy'):
         transparent=True,
         dpi=300
     )
+
+    plt.close()

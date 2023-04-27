@@ -17,9 +17,11 @@ except:
 from joblib import dump
 from time import time
 
-file_name = '2022_03_22_P56B_307x532'
+# file_name = '2022_03_22_P56B_307x532'
+file_name = '2022_06_07_P39B_616x519'
 
-map_data = MapData(f'./data/Rakoviny/P56B/{file_name}.libsdata')
+map_data = MapData(f'./data/Rakoviny/P39B/{file_name}.libsdata')
+# map_data = MapData(f'./data/Rakoviny/P56B/{file_name}.libsdata')
 map_data.get_metadata()
 map_data.load_wavelenths()
 print('loading data')
