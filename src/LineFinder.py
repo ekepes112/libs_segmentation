@@ -30,6 +30,22 @@ class LineFinder():
         self.spectrum = spectrum.copy()
         self.wvl = wvl.copy()
         self.name = name
+        self.plot = None
+
+    def create_base_plot(self):
+        """Create a base plot.
+        """
+        self.plot = go.Figure()
+        self.plot = self.plot.add_trace(
+            go.Scatter(
+                x=np.squeeze(self.wvl),
+                y=np.squeeze(self.spectrum),
+                showlegend=True,
+                name=self.name
+            )
+        )
+
+        self.plot = _update_layout(self.plot)
 
     def find_lines(
         self,
@@ -69,15 +85,8 @@ class LineFinder():
             print('performing line finding')
             self.find_lines()
 
-        self.plot = go.Figure()
-        self.plot = self.plot.add_trace(
-            go.Scatter(
-                x=np.squeeze(self.wvl),
-                y=np.squeeze(self.spectrum),
-                showlegend=True,
-                name=self.name
-            )
-        )
+        if self.plot is None:
+            self.create_base_plot()
 
         self.plot.add_trace(
             go.Scatter(
@@ -87,8 +96,6 @@ class LineFinder():
                 name='Found peaks'
             )
         )
-
-        self.plot = _update_layout(self.plot)
 
         for line_ndx, emission_line_data in enumerate(zip(
             self.peaks[1]['left_bases'],
