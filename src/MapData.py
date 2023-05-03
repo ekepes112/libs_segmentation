@@ -7,7 +7,7 @@ from random import randint
 import json
 import struct
 import matplotlib.pyplot as plt
-from typing import Callable
+from typing import Callable, List
 
 
 class MapData:
@@ -35,7 +35,7 @@ class MapData:
         self.map_dimensions = None
         self.line_intensities = None
 
-    def get_map_dimensions(self):
+    def get_map_dimensions(self) -> None:
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
         """
         map_dimensions = re.findall(
@@ -45,7 +45,7 @@ class MapData:
 
         self.map_dimensions = [int(x) for x in map_dimensions]
 
-    def get_metadata(self):
+    def get_metadata(self) -> None:
         """Load metadata from the metadata file corresponding to the selected data file
         """
         metadata_path = self.file_path.with_suffix('.libsmetadata')
@@ -57,7 +57,7 @@ class MapData:
         else:
             raise ImportError('Metadata file is missing')
 
-    def create_data_type(self):
+    def create_data_type(self) -> None:
         """Defines the data_type used for loading in the binary data (takes information from the metadata)
         """
         if self.metadata is None:
@@ -70,7 +70,7 @@ class MapData:
             )]
         )
 
-    def load_wavelenths(self):
+    def load_wavelenths(self) -> None:
         """Load the wavelength vector from the binary data file
         """
         if self.data_type is None:
@@ -81,7 +81,11 @@ class MapData:
             count=1
         )['data'][0]
 
-    def load_batch_of_spectra(self, batch_size: int, start_ndx: int):
+    def load_batch_of_spectra(
+        self,
+        batch_size: int,
+        start_ndx: int
+    ) -> None:
         """Load a batch of consecutive spectra from the binary data file
 
         Args:
@@ -101,7 +105,10 @@ class MapData:
         else:
             print('The chosen batchsize and offset are out of bounds')
 
-    def load_random_spectrum_from_batch(self, batch_size: int):
+    def load_random_spectrum_from_batch(
+        self,
+        batch_size: int
+    ) -> None:
         """Loads a single spectrum from every batch defined by the batch_size parameter
 
         Args:
@@ -147,7 +154,7 @@ class MapData:
             (-1, self.metadata.get('wavelengths'))
         )
 
-    def load_random_spectrum(self):
+    def load_random_spectrum(self) -> None:
         """Load a random spectrum from the whole data file
         """
         if self.data_type is None:
@@ -161,7 +168,10 @@ class MapData:
             self.metadata.get('wavelengths') * self.BYTE_SIZE
         )['data'][0]
 
-    def plot_random_spectrum(self, return_fig: bool = False):
+    def plot_random_spectrum(
+        self,
+        return_fig: bool = False
+    ) -> None:
         """load and plot a random spectrum from the file
         """
         fig, ax = plt.subplots()
@@ -183,7 +193,7 @@ class MapData:
         else:
             return None
 
-    def load_all_data(self):
+    def load_all_data(self) -> None:
         """loads all spectra from the file
         """
         if self.data_type is None:
@@ -197,7 +207,7 @@ class MapData:
     def trim_spectra(
         self,
         trim_width: int
-    ):
+    ) -> None:
         """Removes the edges of the spectra. To be used if the intensity abruptly drops towards the ends.
 
         Args:
@@ -207,7 +217,10 @@ class MapData:
         self.wvl = self.wvl[trim_width:-trim_width]
 
     @staticmethod
-    def _rolling_min(arr: np.array, window_width: int) -> np.array:
+    def _rolling_min(
+        arr: np.array,
+        window_width: int
+    ) -> np.array:
         """Calculates the moving minima in each row of the provided array.
 
         Args:
@@ -275,7 +288,7 @@ class MapData:
             mode='valid'
         )
 
-    def align_baselines_with_spectra(self):
+    def align_baselines_with_spectra(self) -> None:
         """Discards the last few pixels of the determined baselines if they are longer than the corresponding spectra.
         """
         self.baselines = self.baselines[
@@ -286,7 +299,7 @@ class MapData:
     def baseline_correct(
         self,
         keep_baselines: bool = False
-    ):
+    ) -> None:
         """_summary_
 
         Args:
@@ -303,15 +316,16 @@ class MapData:
         )
 
         if not keep_baselines:
-            del self.baselines
+            self.baselines = None
 
     def get_emission_line_intensities(
         self,
         left_boundaries: list,
         right_boundaries: list,
         line_centers: list,
-        intensity_func: Callable
-    ):
+        # intensity_func: Callable
+        intensity_funcs: List[Callable]
+    ) -> None:
         """_summary_
 
         Args:
@@ -327,21 +341,24 @@ class MapData:
             raise ValueError('incompatible lists provided')
 
         self.line_intensities = dict()
-        for line_center, left_bound, right_bound in zip(
-            line_centers,
-            left_boundaries,
-            right_boundaries
-        ):
-            self.line_intensities[
-                f'{self.wvl[line_center]:.2f}'
-            ] = intensity_func(
-                self.spectra[:, left_bound:right_bound],
-                axis=1
-            )
+        for intensity_func in intensity_funcs:
+            self.line_intensities[intensity_func.__name__] = dict()
+            for line_center, left_bound, right_bound in zip(
+                line_centers,
+                left_boundaries,
+                right_boundaries
+            ):
+                self.line_intensities[intensity_func.__name__][
+                    f'{self.wvl[line_center]:.2f}'
+                ] = intensity_func(
+                    self.spectra[:, left_bound:right_bound],
+                    axis=1
+                )
 
     def vector_to_array(
-        self, data: np.array
-    ):
+        self,
+        data: np.array
+    ) -> None:
         """_summary_
 
         Args:
