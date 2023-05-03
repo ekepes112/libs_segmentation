@@ -323,7 +323,6 @@ class MapData:
         left_boundaries: list,
         right_boundaries: list,
         line_centers: list,
-        # intensity_func: Callable
         intensity_funcs: List[Callable]
     ) -> None:
         """_summary_
