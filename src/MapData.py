@@ -8,6 +8,8 @@ import json
 import struct
 import matplotlib.pyplot as plt
 from typing import Callable, List
+import pywt
+from scipy.interpolate import interp1d
 
 
 class MapData:
@@ -370,3 +372,29 @@ class MapData:
         data[::2, :] = data[::2, ::-1]
 
         return data
+
+    @staticmethod
+    def _upsample_wvl(wvl: np.array) -> np.array:
+        return np.linspace(
+            start=wvl[0],
+            stop=wvl[-1],
+            num=int(2 ** np.ceil(np.log2(len(wvl))))
+        )
+
+    @staticmethod
+    def _upsample_spectrum(
+        spectrum: np.array,
+        wvl: np.array,
+        new_wvl: np.array = None
+    ) -> np.array:
+        return interp1d(wvl, spectrum)(new_wvl)
+
+    def upsample_spectra(self) -> None:
+        self.spectra = np.apply_along_axis(
+            arr=self.spectra,
+            axis=1,
+            func1d=self._upsample_spectrum,
+            wvl=self.wvl,
+            new_wvl=self._upsample_wvl(self.wvl)
+        )
+        self.wvl = self._upsample_wvl(self.wvl)
