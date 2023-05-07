@@ -7,7 +7,7 @@ from random import randint
 import json
 import struct
 import matplotlib.pyplot as plt
-from typing import Callable, List
+from typing import Callable, List, Union
 import pywt
 from scipy.interpolate import interp1d
 
@@ -403,7 +403,7 @@ class MapData:
     def _denoise_spectrum(
         spectrum: np.array,
         wavelet: pywt.Wavelet,
-        threshold: List(float, Callable)
+        threshold: Union[float, Callable]
     ) -> np.array:
         """_summary_
         TODO test the removed noise's distribution for normality
@@ -454,7 +454,7 @@ class MapData:
     def denoise_spectra(
         self,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
-        threshold: List(float, Callable) = 35.
+        threshold: Union[float, Callable] = 35.
     ) -> None:
         self.spectra = np.apply_along_axis(
             func1d=self._denoise_spectrum,
