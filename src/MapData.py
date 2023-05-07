@@ -398,3 +398,68 @@ class MapData:
             new_wvl=self._upsample_wvl(self.wvl)
         )
         self.wvl = self._upsample_wvl(self.wvl)
+
+    @staticmethod
+    def _denoise_spectrum(
+        spectrum: np.array,
+        wavelet: pywt.Wavelet,
+        threshold: List(float, Callable)
+    ) -> np.array:
+        """_summary_
+        TODO test the removed noise's distribution for normality
+
+        Args:
+            spectrum (np.array): _description_
+            wavelet (pywt.Wavelet): _description_
+            threshold (List): _description_
+
+        Returns:
+            np.array: _description_
+        """
+        wavelet_docomposition = pywt.swt(
+            spectrum,
+            wavelet=wavelet,
+            level=11,
+            start_level=0,
+            trim_approx=False
+        )
+
+        if isinstance(threshold, Callable):
+            threshold = threshold(spectrum)
+
+        thresholded_decomposition = [
+            (
+                pywt.threshold(
+                    data=coefs[0],
+                    substitute=0,
+                    value=threshold,
+                    mode='soft'
+                ),
+                pywt.threshold(
+                    data=coefs[1],
+                    substitute=0,
+                    value=threshold,
+                    mode='soft'
+                )
+            )
+            for coefs
+            in wavelet_docomposition
+        ]
+
+        return pywt.iswt(
+            thresholded_decomposition,
+            wavelet=wavelet
+        )
+
+    def denoise_spectra(
+        self,
+        wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
+        threshold: List(float, Callable) = 35.
+    ) -> None:
+        self.spectra = np.apply_along_axis(
+            func1d=self._denoise_spectrum,
+            axis=1,
+            arr=self.spectra,
+            wavelet=wavelet,
+            threshold=threshold
+        )
