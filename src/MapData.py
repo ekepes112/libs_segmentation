@@ -432,6 +432,7 @@ class MapData:
             spectrum (np.array): An initial (noisy) spectrum.
             wavelet (pywt.Wavelet): The wavelet to be used for the decomposition and reconstruction.
             threshold (List): The threshold value used for squeezing the wavelet coefficients.
+            level (int): wavelet decomposition level
 
         Returns:
             np.array: Denoised spectrum.
@@ -470,6 +471,7 @@ class MapData:
         Args:
             wavelet (pywt.Wavelet, optional): Wavelet used for the decompositions. Defaults to pywt.Wavelet('rbio6.8').
             threshold (Union[float, Callable], optional): The threshold value used for squeezing the wavelet coefficients. Defaults to 35..
+            level (int): wavelet decomposition level
         """
         self.spectra = np.apply_along_axis(
             func1d=self._denoise_spectrum,
