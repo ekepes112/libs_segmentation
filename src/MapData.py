@@ -359,22 +359,29 @@ class MapData:
     def vector_to_array(
         self,
         data: np.array
-    ) -> None:
-        """_summary_
+    ) -> np.array:
+        """Reshapes a spectrum-wise summary statistic (e.g., integrated intensity) into an array with the map's dimensions.
 
         Args:
-            data (np.array): _description_
+            data (np.array): The vector to be reshaped.
 
         Returns:
-            _type_: _description_
+            np.array: The input data with the map's dimensions.
         """
         data = data.copy().reshape(self.map_dimensions[::-1])
         data[::2, :] = data[::2, ::-1]
-
         return data
 
     @staticmethod
     def _upsample_wvl(wvl: np.array) -> np.array:
+        """Upsample the input wavelength vector so that its length is a power of 2.
+
+        Args:
+            wvl (np.array): Wavelength vector.
+
+        Returns:
+            np.array: Upsampled wavelength vector.
+        """
         return np.linspace(
             start=wvl[0],
             stop=wvl[-1],
@@ -387,9 +394,21 @@ class MapData:
         wvl: np.array,
         new_wvl: np.array = None
     ) -> np.array:
+        """Upsample a spectrum so that its length is a power of 2.
+
+        Args:
+            spectrum (np.array): A spectrum.
+            wvl (np.array): Initial wavelength vector corresponding to the spectrum.
+            new_wvl (np.array, optional): The upsampled wavelenght vector to which the spectrum is being upsample to. Defaults to None.
+
+        Returns:
+            np.array: Upsampled spectrum.
+        """
         return interp1d(wvl, spectrum)(new_wvl)
 
     def upsample_spectra(self) -> None:
+        """Upsample all spectra.
+        """
         self.spectra = np.apply_along_axis(
             arr=self.spectra,
             axis=1,
@@ -405,16 +424,16 @@ class MapData:
         wavelet: pywt.Wavelet,
         threshold: Union[float, Callable]
     ) -> np.array:
-        """_summary_
+        """Perform wavelet transformation-based denoising.
         TODO test the removed noise's distribution for normality
 
         Args:
-            spectrum (np.array): _description_
-            wavelet (pywt.Wavelet): _description_
-            threshold (List): _description_
+            spectrum (np.array): An initial (noisy) spectrum.
+            wavelet (pywt.Wavelet): The wavelet to be used for the decomposition and reconstruction.
+            threshold (List): The threshold value used for squeezing the wavelet coefficients.
 
         Returns:
-            np.array: _description_
+            np.array: Denoised spectrum.
         """
         wavelet_docomposition = pywt.swt(
             spectrum,
@@ -456,6 +475,12 @@ class MapData:
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
         threshold: Union[float, Callable] = 35.
     ) -> None:
+        """Denoise all spectra.
+
+        Args:
+            wavelet (pywt.Wavelet, optional): Wavelet used for the decompositions. Defaults to pywt.Wavelet('rbio6.8').
+            threshold (Union[float, Callable], optional): The threshold value used for squeezing the wavelet coefficients. Defaults to 35..
+        """
         self.spectra = np.apply_along_axis(
             func1d=self._denoise_spectrum,
             axis=1,
