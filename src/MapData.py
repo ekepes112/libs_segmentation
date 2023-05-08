@@ -422,7 +422,8 @@ class MapData:
     def _denoise_spectrum(
         spectrum: np.array,
         wavelet: pywt.Wavelet,
-        threshold: Union[float, Callable]
+        threshold: Union[float, Callable],
+        level: int
     ) -> np.array:
         """Perform wavelet transformation-based denoising.
         TODO test the removed noise's distribution for normality
@@ -438,42 +439,31 @@ class MapData:
         wavelet_docomposition = pywt.swt(
             spectrum,
             wavelet=wavelet,
-            level=11,
+            level=level,
             start_level=0,
             trim_approx=False
         )
-
         if isinstance(threshold, Callable):
             threshold = threshold(spectrum)
-
-        thresholded_decomposition = [
-            (
-                pywt.threshold(
-                    data=coefs[0],
-                    substitute=0,
-                    value=threshold,
-                    mode='soft'
-                ),
-                pywt.threshold(
-                    data=coefs[1],
+        return pywt.iswt(
+            [
+                (x[0, :], x[1, :])
+                for x
+                in pywt.threshold(
+                    data=np.array(wavelet_docomposition),
                     substitute=0,
                     value=threshold,
                     mode='soft'
                 )
-            )
-            for coefs
-            in wavelet_docomposition
-        ]
-
-        return pywt.iswt(
-            thresholded_decomposition,
+            ],
             wavelet=wavelet
         )
 
     def denoise_spectra(
         self,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
-        threshold: Union[float, Callable] = 35.
+        threshold: Union[float, Callable] = 35.,
+        level: int = 11
     ) -> None:
         """Denoise all spectra.
 
@@ -486,5 +476,6 @@ class MapData:
             axis=1,
             arr=self.spectra,
             wavelet=wavelet,
-            threshold=threshold
+            threshold=threshold,
+            level=level
         )
