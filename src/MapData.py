@@ -16,7 +16,11 @@ class MapData:
     """Class for handling hyperspectral images stored in the .libsdata file format
     """
 
-    def __init__(self, file_path: str = None):
+    def __init__(
+        self,
+        file_path: str = None,
+        overwrite: bool = False
+    ) -> None:
         if file_path is None:
             self.file_path = Path(
                 filedialog.askopenfilename(
@@ -36,20 +40,26 @@ class MapData:
         self.wvl = None
         self.map_dimensions = None
         self.line_intensities = None
+        self.overwrite = overwrite
+        self.systemic_noise_spectrum = None
 
     def get_map_dimensions(self) -> None:
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
         """
-        map_dimensions = re.findall(
-            '[0-9]{3}x[0-9]{3}',
-            self.file_path.name
-        )[0].split('x')
-
-        self.map_dimensions = [int(x) for x in map_dimensions]
+        print('getting map dimensions')
+        try:
+            map_dimensions = re.findall(
+                '[0-9]{3}x[0-9]{3}',
+                self.file_path.name
+            )[0].split('x')
+            self.map_dimensions = [int(x) for x in map_dimensions]
+        except IndexError:
+            print('No map dimensions found')
 
     def get_metadata(self) -> None:
         """Load metadata from the metadata file corresponding to the selected data file
         """
+        print('loading metadata')
         metadata_path = self.file_path.with_suffix('.libsmetadata')
         if metadata_path.is_file():
             with open(
@@ -75,6 +85,7 @@ class MapData:
     def load_wavelenths(self) -> None:
         """Load the wavelength vector from the binary data file
         """
+        print('loading wavelengths')
         if self.data_type is None:
             self.create_data_type()
         self.wvl = np.fromfile(
@@ -195,16 +206,34 @@ class MapData:
         else:
             return None
 
-    def load_all_data(self) -> None:
+    def load_all_data(
+        self,
+        file_name_supplement: str
+    ) -> None:
         """loads all spectra from the file
         """
-        if self.data_type is None:
-            self.create_data_type()
-        self.spectra = np.fromfile(
-            self.file_path,
-            self.data_type,
-            offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
-        )['data']
+        if not self._check_file(file_name_supplement):
+            print('preprocessed file was not found; setting overwrite to True')
+            self.overwrite = True
+
+        if self.overwrite:
+            print(
+                'loading raw data'
+            )
+            if self.data_type is None:
+                self.create_data_type()
+            self.spectra = np.fromfile(
+                self.file_path,
+                self.data_type,
+                offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
+            )['data']
+        elif self._check_file(file_name_supplement) and not self.overwrite:
+            self.spectra = np.load(
+                self.file_path.with_name(
+                    self._supplement_file_name(file_name_supplement)
+                ),
+                allow_pickle=False
+            )
 
     def trim_spectra(
         self,
@@ -215,7 +244,8 @@ class MapData:
         Args:
             trim_width (int): The number of pixels to drop at both the beginning and end of every spectrum.
         """
-        self.spectra = self.spectra[:, trim_width:-trim_width]
+        if self.overwrite:
+            self.spectra = self.spectra[:, trim_width:-trim_width]
         self.wvl = self.wvl[trim_width:-trim_width]
 
     @staticmethod
@@ -262,36 +292,38 @@ class MapData:
         min_window_size: int = 50,
         smooth_window_size: int = None
     ) -> None:
-        """Determines the spectra's baselines.
+        """
+        Determines the spectra's baselines.
 
         Args:
             min_window_size (int, optional): Width of the rolling minimum function. Defaults to 50.
             smooth_window_size (int, optional): Width of the smoothing function. Defaults to None.
         """
-        if smooth_window_size is None:
-            smooth_window_size = 2*min_window_size
+        if self.overwrite and self.baselines is None:
+            print('getting baselines')
+            if smooth_window_size is None:
+                smooth_window_size = 2*min_window_size
+            local_minima = self._rolling_min(
+                arr=np.hstack(
+                    [self.spectra[:, 0][:, np.newaxis]] *
+                    ((min_window_size + smooth_window_size) // 2)
+                    + [self.spectra]
+                    + [self.spectra[:, -1][:, np.newaxis]] *
+                    ((min_window_size + smooth_window_size) // 2)
+                ),
+                window_width=min_window_size
+            )
+            self.baselines = np.apply_along_axis(
+                arr=local_minima,
+                func1d=np.convolve,
+                axis=1,
+                v=self._get_smoothing_kernel(smooth_window_size),
+                mode='valid'
+            )
 
-        local_minima = self._rolling_min(
-            arr=np.hstack(
-                [self.spectra[:, 0][:, np.newaxis]] *
-                ((min_window_size + smooth_window_size) // 2)
-                + [self.spectra]
-                + [self.spectra[:, -1][:, np.newaxis]] *
-                ((min_window_size + smooth_window_size) // 2)
-            ),
-            window_width=min_window_size
-        )
-
-        self.baselines = np.apply_along_axis(
-            arr=local_minima,
-            func1d=np.convolve,
-            axis=1,
-            v=self._get_smoothing_kernel(smooth_window_size),
-            mode='valid'
-        )
-
-    def align_baselines_with_spectra(self) -> None:
-        """Discards the last few pixels of the determined baselines if they are longer than the corresponding spectra.
+    def _align_baselines_with_spectra(self) -> None:
+        """
+        Discards the last few pixels of the determined baselines if they are longer than the corresponding spectra.
         """
         self.baselines = self.baselines[
             :,
@@ -302,23 +334,22 @@ class MapData:
         self,
         keep_baselines: bool = False
     ) -> None:
-        """_summary_
+        """
+        Subtracts the baselines from the spectra.
 
         Args:
-            keep_baselines (bool, optional): _description_. Defaults to False.
+            keep_baselines (bool, optional): Whether to keep or discard the baselines. Defaults to False.
         """
-        if self.baselines is None:
+        if self.overwrite:
             self.get_baseline()
+            self._align_baselines_with_spectra()
+            self.spectra = np.subtract(
+                self.spectra,
+                self.baselines
+            )
 
-        self.align_baselines_with_spectra()
-
-        self.spectra = np.subtract(
-            self.spectra,
-            self.baselines
-        )
-
-        if not keep_baselines:
-            self.baselines = None
+            if not keep_baselines:
+                self.baselines = None
 
     def get_emission_line_intensities(
         self,
@@ -343,6 +374,8 @@ class MapData:
 
         self.line_intensities = dict()
         for intensity_func in intensity_funcs:
+            print(
+                f'extracting emission line intensities using {intensity_func.__name__}')
             self.line_intensities[intensity_func.__name__] = dict()
             for line_center, left_bound, right_bound in zip(
                 line_centers,
@@ -407,15 +440,18 @@ class MapData:
         return interp1d(wvl, spectrum)(new_wvl)
 
     def upsample_spectra(self) -> None:
-        """Upsample all spectra.
         """
-        self.spectra = np.apply_along_axis(
-            arr=self.spectra,
-            axis=1,
-            func1d=self._upsample_spectrum,
-            wvl=self.wvl,
-            new_wvl=self._upsample_wvl(self.wvl)
-        )
+        Upsamples the spectra.
+        """
+        if self.overwrite:
+            print('upsampling spectra')
+            self.spectra = np.apply_along_axis(
+                arr=self.spectra,
+                axis=1,
+                func1d=self._upsample_spectrum,
+                wvl=self.wvl,
+                new_wvl=self._upsample_wvl(self.wvl)
+            )
         self.wvl = self._upsample_wvl(self.wvl)
 
     @staticmethod
@@ -423,19 +459,20 @@ class MapData:
         spectrum: np.array,
         wavelet: pywt.Wavelet,
         threshold: Union[float, Callable],
-        level: int
+        level: int = 9
     ) -> np.array:
-        """Perform wavelet transformation-based denoising.
+        """
+        Denoise a given spectrum using the provided wavelet, threshold value, and level of decomposition.
         TODO test the removed noise's distribution for normality
 
         Args:
-            spectrum (np.array): An initial (noisy) spectrum.
-            wavelet (pywt.Wavelet): The wavelet to be used for the decomposition and reconstruction.
-            threshold (List): The threshold value used for squeezing the wavelet coefficients.
-            level (int): wavelet decomposition level
+            spectrum (np.array): The spectrum to be denoised.
+            wavelet (pywt.Wavelet): The wavelet used for decomposition.
+            threshold (Union[float, Callable]): The threshold value or function used to threshold the coefficients.
+            level (int): The depth of decomposition.
 
         Returns:
-            np.array: Denoised spectrum.
+            np.array: The denoised spectrum.
         """
         wavelet_docomposition = pywt.swt(
             spectrum,
@@ -460,24 +497,158 @@ class MapData:
             wavelet=wavelet
         )
 
+    def estimate_systemic_noise(self) -> None:
+        """
+        Estimate the systemic noise spectrum.
+
+        Returns:
+            None
+        """
+        if self.overwrite:
+            print('estimating systemic noise spectrum')
+            diff_spectra = np.diff(self.spectra[:, :])
+            self.systemic_noise_spectrum = np.median(
+                diff_spectra,
+                axis=0,
+                keepdims=True
+            ) / 2
+
     def denoise_spectra(
         self,
+        file_name_supplement: str,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
         threshold: Union[float, Callable] = 35.,
-        level: int = 11
+        level: int = 9
     ) -> None:
-        """Denoise all spectra.
+        """
+        Apply wavelet denoising to the spectra data along the second axis.
 
         Args:
-            wavelet (pywt.Wavelet, optional): Wavelet used for the decompositions. Defaults to pywt.Wavelet('rbio6.8').
-            threshold (Union[float, Callable], optional): The threshold value used for squeezing the wavelet coefficients. Defaults to 35..
-            level (int): wavelet decomposition level
+            file_name_supplement (str): A string to append to the file name stem.
+            wavelet (pywt.Wavelet): wavelet to use for the transformation (default: 'rbio6.8')
+            threshold (threshold: float or callable): threshold for wavelet coefficients (default: 35.)
+            level (int): wavelet decomposition level (default: 9)
+
+        Returns:
+            None
         """
-        self.spectra = np.apply_along_axis(
-            func1d=self._denoise_spectrum,
-            axis=1,
+        if self.overwrite:
+            print('denoising spectra')
+            self.spectra = np.apply_along_axis(
+                func1d=self._denoise_spectrum,
+                axis=1,
+                arr=self.spectra,
+                wavelet=wavelet,
+                threshold=threshold,
+                level=level
+            )
+            self.save_spectra(file_name_supplement)
+
+    def _supplement_file_name(
+        self,
+        file_name_supplement: str
+    ) -> str:
+        """
+        Concatenates a given string to the file name stem, and returns the updated file
+        name with the .npy extension.
+
+        Args:
+            file_name_supplement (str): A string to append to the file name stem.
+
+        Returns:
+            str: Updated file name with the .npy extension.
+        """
+        return f'{self.file_path.stem}_{file_name_supplement}.npy'
+
+    def _check_file(
+        self,
+        file_name_supplement: str
+    ) -> bool:
+        """Checks if a file exists in the same directory with a given file name supplement.
+
+        Args:
+            file_name_supplement (str): A string representing the file name supplement to add to the file name.
+
+        Returns:
+            bool: A boolean indicating if the file exists.
+        """
+        return self.file_path.with_name(
+            self._supplement_file_name(file_name_supplement)
+        ).exists()
+
+    def save_spectra(
+        self,
+        file_name_supplement: str
+    ) -> None:
+        """
+        Save the current array of spectra to disk.
+
+        Args:
+            file_name_supplement (str): A supplement to the filename to help differentiate the saved file.
+        """
+        print('saving spectra')
+        np.save(
             arr=self.spectra,
-            wavelet=wavelet,
-            threshold=threshold,
-            level=level
+            file=self.file_path.with_name(
+                self._supplement_file_name(file_name_supplement)
+            )
         )
+
+
+def min_max_dist(
+    arr: np.array,
+    axis: int = 1
+) -> np.array:
+    """
+    Calculates the range between the maximum and minimum values of an array along a specified axis.
+
+    Args:
+        arr (np.array): The input array.
+        axis (int): The axis along which to calculate the range. Default is 1.
+
+    Returns:
+        np.array: The range of the array along the specified axis.
+    """
+    return np.max(arr, axis=axis) - np.min(arr, axis=axis)
+
+
+def get_triangular_kernel(size: int) -> np.array:
+    """
+    Generates a triangular kernel of a given size.
+
+    Args:
+        size (int): an integer representing the size of the kernel.
+
+    Returns:
+        np.array: na array representing the triangular kernel.
+    """
+    return np.concatenate((np.arange(1, size), np.arange(size, 0, -1))) / size
+
+
+def triangle_corr(
+    arr: np.array,
+    axis: int = 1
+) -> np.array:
+    """
+    Calculates the correlation coefficient of an array with a triangular kernel along a specified axis.
+
+    Args:
+        arr (np.array): The input array.
+        axis (int, optional):  The axis along which to calculate the correlation. Defaults to 1.
+
+    Returns:
+        np.array: The correlation coefficient of the array with the triangular kernel along the specified axis.
+    """
+    size = np.ceil(arr.shape[1] / 2)
+    kernel = get_triangular_kernel(int(size))
+    kernel = np.interp(
+        np.linspace(0, len(kernel), num=arr.shape[1]),
+        np.arange(len(kernel)),
+        get_triangular_kernel(size)
+    )
+
+    return np.apply_along_axis(
+        func1d=lambda row: np.corrcoef(row, kernel)[0, 1],
+        arr=arr,
+        axis=axis
+    )
