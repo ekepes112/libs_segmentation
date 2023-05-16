@@ -47,12 +47,14 @@ class MapData:
         """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
         """
         print('getting map dimensions')
-        map_dimensions = re.findall(
-            '[0-9]{3}x[0-9]{3}',
-            self.file_path.name
-        )[0].split('x')
-
-        self.map_dimensions = [int(x) for x in map_dimensions]
+        try:
+            map_dimensions = re.findall(
+                '[0-9]{3}x[0-9]{3}',
+                self.file_path.name
+            )[0].split('x')
+            self.map_dimensions = [int(x) for x in map_dimensions]
+        except IndexError:
+            print('No map dimensions found')
 
     def get_metadata(self) -> None:
         """Load metadata from the metadata file corresponding to the selected data file
