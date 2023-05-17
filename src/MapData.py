@@ -13,7 +13,8 @@ from scipy.interpolate import interp1d
 
 
 class MapData:
-    """Class for handling hyperspectral images stored in the .libsdata file format
+    """
+    Class for handling hyperspectral images stored in the .libsdata file format
     """
 
     def __init__(
@@ -42,9 +43,14 @@ class MapData:
         self.line_intensities = None
         self.overwrite = overwrite
         self.systemic_noise_spectrum = None
+        self.left_boundaries = None
+        self.right_boundaries = None
+        self.line_centers = None
+        self.intensity_funcs = None
 
     def get_map_dimensions(self) -> None:
-        """Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
+        """
+        Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
         """
         print('getting map dimensions')
         try:
@@ -57,20 +63,24 @@ class MapData:
             print('No map dimensions found')
 
     def get_metadata(self) -> None:
-        """Load metadata from the metadata file corresponding to the selected data file
+        """
+        Loads metadata from the metadata file corresponding to the selected data file
         """
         print('loading metadata')
         metadata_path = self.file_path.with_suffix('.libsmetadata')
         if metadata_path.is_file():
             with open(
-                self.file_path.with_suffix('.libsmetadata'), 'r'
+                self.file_path.with_suffix('.libsmetadata'),
+                'r',
+                encoding='utf-8'
             ) as file:
                 self.metadata = json.load(file)
         else:
             raise ImportError('Metadata file is missing')
 
     def create_data_type(self) -> None:
-        """Defines the data_type used for loading in the binary data (takes information from the metadata)
+        """
+        Defines the data_type used for loading in the binary data (takes information from the metadata)
         """
         if self.metadata is None:
             self.get_metadata()
@@ -83,7 +93,8 @@ class MapData:
         )
 
     def load_wavelenths(self) -> None:
-        """Load the wavelength vector from the binary data file
+        """
+        Loads the wavelength vector from the binary data file
         """
         print('loading wavelengths')
         if self.data_type is None:
@@ -99,7 +110,8 @@ class MapData:
         batch_size: int,
         start_ndx: int
     ) -> None:
-        """Load a batch of consecutive spectra from the binary data file
+        """
+        Loads a batch of consecutive spectra from the binary data file
 
         Args:
             batch_size (int): number of spectra to load
@@ -122,7 +134,8 @@ class MapData:
         self,
         batch_size: int
     ) -> None:
-        """Loads a single spectrum from every batch defined by the batch_size parameter
+        """
+        Loads a single spectrum from every batch defined by the batch_size parameter
 
         Args:
             batch_size (int): Number of spectra from which 1 is randomly sampled
@@ -140,7 +153,6 @@ class MapData:
             for _ in range(batch_count):
                 ndx = randint(0, batch_size)
                 debug_log.debug(f'{ndx}')
-
                 source.seek(
                     self.metadata.get('wavelengths') *
                     self.BYTE_SIZE * (ndx - 1),
@@ -168,7 +180,8 @@ class MapData:
         )
 
     def load_random_spectrum(self) -> None:
-        """Load a random spectrum from the whole data file
+        """
+        Loads a random spectrum from the whole data file
         """
         if self.data_type is None:
             self.create_data_type()
@@ -185,7 +198,8 @@ class MapData:
         self,
         return_fig: bool = False
     ) -> None:
-        """load and plot a random spectrum from the file
+        """
+        Loads and plot a random spectrum from the file
         """
         fig, ax = plt.subplots()
         if not hasattr(self, 'wvl'):
@@ -210,7 +224,8 @@ class MapData:
         self,
         file_name_supplement: str
     ) -> None:
-        """loads all spectra from the file
+        """
+        Loads all spectra from the file
         """
         if not self._check_file(file_name_supplement):
             print('preprocessed file was not found; setting overwrite to True')
@@ -239,7 +254,8 @@ class MapData:
         self,
         trim_width: int
     ) -> None:
-        """Removes the edges of the spectra. To be used if the intensity abruptly drops towards the ends.
+        """
+        Removes the edges of the spectra. To be used if the intensity abruptly drops towards the ends.
 
         Args:
             trim_width (int): The number of pixels to drop at both the beginning and end of every spectrum.
@@ -253,7 +269,8 @@ class MapData:
         arr: np.array,
         window_width: int
     ) -> np.array:
-        """Calculates the moving minima in each row of the provided array.
+        """
+        Calculates the moving minima in each row of the provided array.
 
         Args:
             arr (np.array): A 2D array with each row representing a spectrum.
@@ -272,7 +289,8 @@ class MapData:
 
     @staticmethod
     def _get_smoothing_kernel(window_width: int) -> np.array:
-        """Generates a Gaussian smoothin kernel of the desired width.
+        """
+        Generates a Gaussian smoothin kernel of the desired width.
 
         Args:
             window_width (int): Width of the kernel (length of the resulting vector).
@@ -353,34 +371,54 @@ class MapData:
 
     def get_emission_line_intensities(
         self,
+        overwrite: bool = False
+    ) -> None:
+        if not self._check_file(
+            'lineIntensities',
+            'json'
+        ) or overwrite:
+            self.calculate_emission_line_intensities()
+            self._save_line_intensities()
+        else:
+            self._load_line_intensities()
+
+    def set_emisssion_line_functions(
+        self,
+        intensity_funcs: List[Callable],
+    ):
+        self.intensity_funcs = intensity_funcs
+
+    def set_emission_line_parameters(
+        self,
         left_boundaries: list,
         right_boundaries: list,
         line_centers: list,
-        intensity_funcs: List[Callable]
     ) -> None:
-        """_summary_
-
-        Args:
-            left_boundaries (list): _description_
-            right_boundaries (list): _description_
-            line_centers (list): _description_
-            intensity_func (Callable): _description_
-
-        Raises:
-            ValueError: _description_
-        """
         if len(left_boundaries) != len(right_boundaries) != len(line_centers):
             raise ValueError('incompatible lists provided')
 
+        self.left_boundaries = left_boundaries
+        self.right_boundaries = right_boundaries
+        self.line_centers = line_centers
+
+    def calculate_emission_line_intensities(self) -> None:
+        if self.left_boundaries is None or self.right_boundaries is None or self.line_centers is None:
+            raise ValueError(
+                'emission line parameters not set; use the set_emission_line_parameters method'
+            )
+        if self.intensity_funcs is None:
+            raise ValueError(
+                'functions for calculating emission line intensities not set; use the set_emission_line_functions method'
+            )
         self.line_intensities = dict()
-        for intensity_func in intensity_funcs:
+        for intensity_func in self.intensity_funcs:
             print(
                 f'extracting emission line intensities using {intensity_func.__name__}')
             self.line_intensities[intensity_func.__name__] = dict()
             for line_center, left_bound, right_bound in zip(
-                line_centers,
-                left_boundaries,
-                right_boundaries
+                self.line_centers,
+                self.left_boundaries,
+                self.right_boundaries
             ):
                 self.line_intensities[intensity_func.__name__][
                     f'{self.wvl[line_center]:.2f}'
@@ -463,6 +501,7 @@ class MapData:
     ) -> np.array:
         """
         Denoise a given spectrum using the provided wavelet, threshold value, and level of decomposition.
+
         TODO test the removed noise's distribution for normality
 
         Args:
@@ -546,34 +585,41 @@ class MapData:
 
     def _supplement_file_name(
         self,
-        file_name_supplement: str
+        file_name_supplement: str,
+        extension: str = 'npy'
     ) -> str:
         """
         Concatenates a given string to the file name stem, and returns the updated file
-        name with the .npy extension.
+        name with the chosen extension.
 
         Args:
             file_name_supplement (str): A string to append to the file name stem.
+            extension (str, optional): The extension to append to the file name. Defaults to 'npy'.
 
         Returns:
-            str: Updated file name with the .npy extension.
+            str: Updated file name with the chosen extension.
         """
-        return f'{self.file_path.stem}_{file_name_supplement}.npy'
+        return f'{self.file_path.stem}_{file_name_supplement}.{extension}'
 
     def _check_file(
         self,
-        file_name_supplement: str
+        file_name_supplement: str,
+        extension: str = 'npy'
     ) -> bool:
         """Checks if a file exists in the same directory with a given file name supplement.
 
         Args:
             file_name_supplement (str): A string representing the file name supplement to add to the file name.
+            extension (str, optional): The extension to append to the file name. Defaults to 'npy'.
 
         Returns:
             bool: A boolean indicating if the file exists.
         """
         return self.file_path.with_name(
-            self._supplement_file_name(file_name_supplement)
+            self._supplement_file_name(
+                file_name_supplement,
+                extension=extension
+            )
         ).exists()
 
     def save_spectra(
@@ -593,6 +639,81 @@ class MapData:
                 self._supplement_file_name(file_name_supplement)
             )
         )
+
+    def _line_intensities_to_list(self) -> None:
+        """
+        Converts line intensities to lists.
+
+        Args:
+
+        Returns:
+            None.
+        """
+        print('converting line intensities to lists')
+        for func in self.line_intensities:
+            for line in self.line_intensities[func]:
+                self.line_intensities[func][line] = self.line_intensities[func][line]\
+                    .tolist()
+
+    def _line_intensities_to_arrays(self) -> None:
+        """
+        Converts line intensities to arrays.
+
+        Returns:
+            None.
+        """
+        print('converting line intensities to arrays')
+        for func in self.line_intensities:
+            for line in self.line_intensities[func]:
+                self.line_intensities[func][line] = np.array(
+                    self.line_intensities[func][line]
+                )
+
+    def _save_line_intensities(self) -> None:
+        """
+        Save the current array of emission line intensities to disk.
+        """
+        try:
+            self._line_intensities_to_list()
+        # if _check_dict_lowest_level(self.line_intensities) is not list:
+        finally:
+            print('saving emission line intensities')
+            with open(
+                self.file_path.with_name(
+                    self._supplement_file_name(
+                        file_name_supplement='lineIntensities',
+                        extension='json'
+                    )
+                ),
+                'w',
+                encoding='utf-8'
+            ) as file:
+                json.dump(self.line_intensities, file)
+
+    def _load_line_intensities(self) -> None:
+        """
+        Save the current array of emission line intensities to disk.
+        """
+        print('loading emission line intensities')
+        with open(
+            self.file_path.with_name(
+                self._supplement_file_name(
+                    file_name_supplement='lineIntensities',
+                    extension='json'
+                )
+            ),
+            'r',
+            encoding='utf-8'
+        ) as file:
+            self.line_intensities = json.load(file)
+        self._line_intensities_to_arrays()
+
+
+def _check_dict_lowest_level(data: dict) -> bool:
+    top_level_instance = data.get(list(data.keys()))[0]
+    if isinstance(top_level_instance, dict):
+        return _check_dict_lowest_level(top_level_instance)
+    return type(top_level_instance)
 
 
 def min_max_dist(
