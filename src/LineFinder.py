@@ -31,6 +31,9 @@ class LineFinder():
         self.wvl = wvl.copy()
         self.name = name
         self.plot = None
+        self.hist_counts = None
+        self.hist_bins = None
+        self.hist_bin_half_width = None
 
     def create_base_plot(self):
         """Create a base plot.
@@ -47,18 +50,39 @@ class LineFinder():
 
         self.plot = _update_layout(self.plot)
 
+    def get_histogram(self) -> None:
+        """
+        Compute a histogram of the spectrum using numpy.histogram.
+
+        Returns:
+            None
+        """
+
+        self.hist_counts, self.hist_bins = np.histogram(
+            self.spectrum,
+            bins=1000
+        )
+        self.hist_bin_half_width = np.diff(self.hist_bins[:2]) / 2
+
     def find_lines(
         self,
-        height: float = (0, 1),
+        height: float = None,
         prominence: float = None,
         distance: int = None,
-        width: int = None,
+        width: int = 7,
         threshold: float = None,
-        rel_height: float = None,
-        wlen: int = None,
+        rel_height: float = 1.,
+        wlen: int = 35,
     ) -> None:
-        """Wrapper around the scikit.signal find_peaks function.
         """
+        Wrapper around the scikit.signal find_peaks function.
+        """
+        if self.hist_bins is None:
+            self.get_histogram()
+        if height is None:
+            height = self.hist_bins[2]
+        if prominence is None:
+            prominence = self.hist_bins[1]
         self.peaks = find_peaks(
             self.spectrum,
             height=height,
