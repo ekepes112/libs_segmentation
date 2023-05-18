@@ -88,7 +88,7 @@ class MapData:
             [(
                 'data',
                 np.float32,
-                self.metadata.get('wavelengths')
+                int(self.metadata.get('wavelengths'))
             )]
         )
 
@@ -423,7 +423,7 @@ class MapData:
                 self.line_intensities[intensity_func.__name__][
                     f'{self.wvl[line_center]:.2f}'
                 ] = intensity_func(
-                    self.spectra[:, left_bound:right_bound],
+                    self.spectra[:, left_bound:right_bound].astype(np.float32),
                     axis=1
                 )
 
