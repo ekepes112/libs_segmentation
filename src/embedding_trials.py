@@ -10,7 +10,7 @@ try:
     from src.LineFinder import LineFinder
     from src.plotting_functions import plot_embedding, plot_single_variable_map
 except:
-    from MapData import MapData
+    from MapData import MapData, min_max_dist, triangle_corr, get_triangular_kernel
     from LineFinder import LineFinder
     from plotting_functions import plot_embedding, plot_single_variable_map
 
@@ -19,7 +19,7 @@ from time import time
 import re
 
 # file_name = '2022_03_22_P56B_307x532'
-# # file_name = '2022_06_07_P39B_616x519'
+# file_name = '2022_06_07_P39B_616x519'
 
 # parent_dir = re.search(
 #     'P[0-9]{2}B{0,1}',
@@ -27,69 +27,66 @@ import re
 # ).group(0)
 
 for file_path in Path('./data/Rakoviny').rglob('*.libsdata'):
-    print(file_path)
-    map_data = MapData(
-        # f'./data/Rakoviny/{parent_dir}/{file_name}.libsdata',
-        file_path
-        overwrite=True
-    )
-    map_data.get_metadata()
-    map_data.load_wavelenths()
-    map_data.load_all_data('preprocessed')
-    ##################
-    # map_data.spectra = map_data.spectra[:200,:]
-    ##################
-    map_data.trim_spectra(64)
-    map_data.get_map_dimensions()
+    try:
+        print(file_path)
+        map_data = MapData(
+            # f'./data/Rakoviny/{parent_dir}/{file_name}.libsdata',
+            file_path,
+            overwrite=False
+        )
+        map_data.get_metadata()
+        map_data.load_wavelenths()
+        map_data.load_all_data('preprocessed')
+        ##################
+        # map_data.spectra = map_data.spectra[:200,:]
+        ##################
+        map_data.trim_spectra(64)
+        map_data.get_map_dimensions()
+        map_data.estimate_systemic_noise()
+        map_data.get_baseline(
+            min_window_size=50,
+            smooth_window_size=100
+        )
+        map_data.baseline_correct()
+        map_data.upsample_spectra()
+        if map_data.systemic_noise_spectrum is not None:
+            map_data.denoise_spectra(
+                file_name_supplement='preprocessed',
+                threshold=np.std(map_data.systemic_noise_spectrum),
+                level=9
+            )
 
-    map_data.estimate_systemic_noise()
+        maxima_spectrum = map_data.spectra.max(axis=0)
 
-    map_data.get_baseline(
-        min_window_size=50,
-        smooth_window_size=100
-    )
-    map_data.baseline_correct()
+        print('finding lines')
+        line_finder = LineFinder(
+            maxima_spectrum,
+            map_data.wvl,
+            name='maxima'
+        )
+        line_finder.find_lines()
+        line_finder.load_nist_tables(
+            Path('D:/OneDrive - Vysoké učení technické v Brně/projects/marsData/inventory/nistTables')
+        )
+        line_finder.find_peaks_in_reference(
+            maxima_spectrum,
+            scale=False,
+            show_cond=False
+        )
 
-    map_data.upsample_spectra()
-    map_data.denoise_spectra(
-        file_name_supplement='preprocessed',
-        threshold=np.std(map_data.systemic_noise_spectrum),
-        level=9
-    )
+        map_data.set_emission_line_parameters(
+            line_finder.peaks[1].get('left_bases'),
+            line_finder.peaks[1].get('right_bases'),
+            line_centers=line_finder.peaks[0]
+        )
+        map_data.set_emisssion_line_functions(
+            intensity_funcs=[np.max,np.sum,min_max_dist,triangle_corr]
+        )
+        print('integrating emission line intensities')
+        map_data.get_emission_line_intensities()
 
-# maxima_spectrum = map_data.spectra.max(axis=0)
-
-# print('finding lines')
-# line_finder = LineFinder(
-#     maxima_spectrum,
-#     map_data.wvl,
-#     name='maxima'
-# )
-# line_finder.find_lines(
-#     height=250,
-#     threshold=None,
-#     distance=None,
-#     prominence=250,
-#     width=3,
-#     wlen=27,
-#     rel_height=1.2,
-# )
-# line_finder.load_nist_tables(
-#     Path('D:/OneDrive - Vysoké učení technické v Brně/projects/marsData/inventory/nistTables')
-# )
-# line_finder.find_peaks_in_reference(
-#     maxima_spectrum,
-#     scale=False,
-#     show_cond=False
-# )
-
-# print('integrating emission line intensities')
-# map_data.get_emission_line_intensities(
-#     line_finder.peaks[1].get('left_bases'),
-#     line_finder.peaks[1].get('right_bases'),
-#     line_centers=line_finder.peaks[0],
-#     intensity_func=[np.max,np.sum,min_max_dist,triangle_corr]
-# )
+    except:
+        pass
 
 # def process(
 #     model,
@@ -119,10 +116,10 @@ for file_path in Path('./data/Rakoviny').rglob('*.libsdata'):
 #     )
 #     ### saving model and embeddings
 #     print(f'{model_type} - saving model')
-#     dump(
-#         model,
-#         f'./temp/{model_id}.joblib'
-#     )
+#     # dump(
+#     #     model,
+#     #     f'./temp/{model_id}.joblib'
+#     # )
 #     print(f'{model_type} - saving embeddings')
 #     np.save(
 #         file=f'./temp/embeddings_{model_id}.npy',
