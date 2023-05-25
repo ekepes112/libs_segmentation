@@ -3,3 +3,4 @@ pyenv_*/
 /output
 /src/__pycache__
 /data
+*.pptx
