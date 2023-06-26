@@ -6,7 +6,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from umap import UMAP
 try:
-    from src.MapData import MapData
+    from src.MapData import MapData, min_max_dist, triangle_corr, get_triangular_kernel
     from src.LineFinder import LineFinder
     from src.plotting_functions import plot_embedding, plot_single_variable_map
 except:
@@ -25,8 +25,8 @@ import re
 #     'P[0-9]{2}B{0,1}',
 #     file_name
 # ).group(0)
-
-for file_path in Path('./data/Rakoviny').rglob('*.libsdata'):
+print(Path('../data/Rakoviny').absolute())
+for file_path in Path('../data/Rakoviny').rglob('*.libsdata'):
     try:
         print(file_path)
         map_data = MapData(
@@ -86,7 +86,9 @@ for file_path in Path('./data/Rakoviny').rglob('*.libsdata'):
         map_data.get_emission_line_intensities()
 
     except:
-        pass
+        print('error')
+    finally:
+        print('complete')
 
 # def process(
 #     model,
