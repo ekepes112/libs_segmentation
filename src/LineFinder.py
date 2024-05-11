@@ -3,10 +3,8 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.signal import find_peaks
 from pathlib import Path
-try:
-    from src.plotting_functions import _update_layout
-except:
-    from plotting_functions import _update_layout
+
+from .plotting_functions import _update_layout
 
 
 class LineFinder():

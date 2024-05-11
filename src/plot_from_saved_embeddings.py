@@ -1,15 +1,8 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-try:
-    from src.MapData import MapData
-    from src.LineFinder import LineFinder
-    from src.plotting_functions import plot_embedding, plot_single_variable_map
-except:
-    from MapData import MapData
-    from LineFinder import LineFinder
-    from plotting_functions import plot_single_variable_map
+
+from .MapData import MapData
 
 file_name = '2022_03_22_P56B_307x532'
 map_data = MapData(f'./data/Rakoviny/P56B/{file_name}.libsdata')
