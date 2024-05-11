@@ -1,13 +1,15 @@
 import re
-from tkinter import filedialog
-import numpy as np
-from numpy.lib.stride_tricks import sliding_window_view
 from pathlib import Path
-from random import randint
 import json
 import struct
-import matplotlib.pyplot as plt
+from tkinter import filedialog
 from typing import Callable, List, Union
+
+import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
+from numba import njit
+from random import randint
+import matplotlib.pyplot as plt
 import pywt
 from scipy.interpolate import interp1d
 
@@ -732,8 +734,8 @@ def min_max_dist(
     """
     return np.max(arr, axis=axis) - np.min(arr, axis=axis)
 
-
-def get_triangular_kernel(size: int) -> np.array:
+@njit
+def get_triangular_kernel(size: int) -> np.ndarray:
     """
     Generates a triangular kernel of a given size.
 
@@ -745,11 +747,11 @@ def get_triangular_kernel(size: int) -> np.array:
     """
     return np.concatenate((np.arange(1, size), np.arange(size, 0, -1))) / size
 
-
+@njit
 def triangle_corr(
-    arr: np.array,
+    arr: np.ndarray,
     axis: int = 1
-) -> np.array:
+) -> np.ndarray:
     """
     Calculates the correlation coefficient of an array with a triangular kernel along a specified axis.
 
@@ -767,9 +769,8 @@ def triangle_corr(
         np.arange(len(kernel)),
         get_triangular_kernel(size)
     )
-
-    return np.apply_along_axis(
-        func1d=lambda row: np.corrcoef(row, kernel)[0, 1],
-        arr=arr,
-        axis=axis
-    )
+    num_rows = arr.shape[0]
+    coeffs = np.zeros(num_rows)
+    for row_ndx in range(num_rows):
+        coeffs[row_ndx] = np.corrcoef(arr[row_ndx], kernel)[0,1]
+    return coeffs
