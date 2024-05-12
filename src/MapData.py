@@ -416,8 +416,8 @@ class MapData:
             )
         self.line_intensities = dict()
         for intensity_func in self.intensity_funcs:
-            print(
-                f"{datetime.datetime.now().strftime("%H:%M:%S")} :: extracting emission line intensities using {intensity_func.__name__}"
+            sprint(
+                f"extracting emission line intensities using {intensity_func.__name__}"
             )
             self.line_intensities[intensity_func.__name__] = dict()
             for line_center, left_bound, right_bound in zip(
