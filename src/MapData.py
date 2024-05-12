@@ -15,6 +15,9 @@ import pywt
 from scipy.interpolate import interp1d
 
 
+def sprint(s: str) -> None:
+    sprint(f"{s}")
+
 class MapData:
     """
     Class for handling hyperspectral images stored in the .libsdata file format
@@ -54,7 +57,7 @@ class MapData:
         """
         Gets the measured map's dimensions (in pixels) assuming that the filename contains this information
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: getting map dimensions")
+        sprint("getting map dimensions")
         try:
             map_dimensions = re.findall(
                 '[0-9]{3}x[0-9]{3}',
@@ -68,7 +71,7 @@ class MapData:
         """
         Loads metadata from the metadata file corresponding to the selected data file
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading metadata")
+        sprint(f"loading metadata")
         metadata_path = self.file_path.with_suffix('.libsmetadata')
         if metadata_path.is_file():
             with open(
@@ -98,7 +101,7 @@ class MapData:
         """
         Loads the wavelength vector from the binary data file
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading wavelengths")
+        sprint(f"loading wavelengths")
         if self.data_type is None:
             self.create_data_type()
         self.wvl = np.fromfile(
@@ -230,11 +233,11 @@ class MapData:
         Loads all spectra from the file
         """
         if not self._check_file(file_name_supplement):
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: preprocessed file was not found; setting overwrite to True")
+            sprint(f"preprocessed file was not found; setting overwrite to True")
             self.overwrite = True
 
         if self.overwrite:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading raw data")
+            sprint(f"loading raw data")
             if self.data_type is None:
                 self.create_data_type()
             self.spectra = np.fromfile(
@@ -243,7 +246,7 @@ class MapData:
                 offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
             )['data']
         elif self._check_file(file_name_supplement) and not self.overwrite:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading processed data")
+            sprint(f"loading processed data")
             self.spectra = np.load(
                 self.file_path.with_name(
                     self._supplement_file_name(file_name_supplement)
@@ -319,7 +322,7 @@ class MapData:
             smooth_window_size (int, optional): Width of the smoothing function. Defaults to None.
         """
         if self.overwrite and self.baselines is None:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: getting baselines")
+            sprint(f"getting baselines")
             if smooth_window_size is None:
                 smooth_window_size = 2*min_window_size
             local_minima = self._rolling_min(
@@ -414,7 +417,8 @@ class MapData:
         self.line_intensities = dict()
         for intensity_func in self.intensity_funcs:
             print(
-                f'extracting emission line intensities using {intensity_func.__name__}')
+                f"{datetime.datetime.now().strftime("%H:%M:%S")} :: extracting emission line intensities using {intensity_func.__name__}"
+            )
             self.line_intensities[intensity_func.__name__] = dict()
             for line_center, left_bound, right_bound in zip(
                 self.line_centers,
@@ -483,7 +487,7 @@ class MapData:
         Upsamples the spectra.
         """
         if self.overwrite:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: upsampling spectra")
+            sprint(f"upsampling spectra")
             self.spectra = np.apply_along_axis(
                 arr=self.spectra,
                 axis=1,
@@ -545,7 +549,7 @@ class MapData:
             None
         """
         if self.overwrite:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: estimating systemic noise spectrum")
+            sprint(f"estimating systemic noise spectrum")
             diff_spectra = np.diff(self.spectra[:, :])
             self.systemic_noise_spectrum = np.median(
                 diff_spectra,
@@ -555,7 +559,6 @@ class MapData:
 
     def denoise_spectra(
         self,
-        file_name_supplement: str,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
         threshold: Union[float, Callable] = 35.,
         level: int = 9
@@ -564,7 +567,6 @@ class MapData:
         Apply wavelet denoising to the spectra data along the second axis.
 
         Args:
-            file_name_supplement (str): A string to append to the file name stem.
             wavelet (pywt.Wavelet): wavelet to use for the transformation (default: 'rbio6.8')
             threshold (threshold: float or callable): threshold for wavelet coefficients (default: 35.)
             level (int): wavelet decomposition level (default: 9)
@@ -573,7 +575,7 @@ class MapData:
             None
         """
         if self.overwrite:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: denoising spectra")
+            sprint(f"denoising spectra")
             self.spectra = np.apply_along_axis(
                 func1d=self._denoise_spectrum,
                 axis=1,
@@ -582,7 +584,6 @@ class MapData:
                 threshold=threshold,
                 level=level
             )
-            self.save_spectra(file_name_supplement)
 
     def _supplement_file_name(
         self,
@@ -633,7 +634,7 @@ class MapData:
         Args:
             file_name_supplement (str): A supplement to the filename to help differentiate the saved file.
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: saving spectra")
+        sprint(f"saving spectra")
         np.save(
             arr=self.spectra,
             file=self.file_path.with_name(
@@ -650,7 +651,7 @@ class MapData:
         Returns:
             None.
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: converting line intensities to lists")
+        sprint(f"converting line intensities to lists")
         for func in self.line_intensities:
             for line in self.line_intensities[func]:
                 self.line_intensities[func][line] = self.line_intensities[func][line]\
@@ -663,7 +664,7 @@ class MapData:
         Returns:
             None.
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: converting line intensities to arrays")
+        sprint(f"converting line intensities to arrays")
         for func in self.line_intensities:
             for line in self.line_intensities[func]:
                 self.line_intensities[func][line] = np.array(
@@ -678,7 +679,7 @@ class MapData:
             self._line_intensities_to_list()
         # if _check_dict_lowest_level(self.line_intensities) is not list:
         finally:
-            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: saving emission line intensities")
+            sprint(f"saving emission line intensities")
             with open(
                 self.file_path.with_name(
                     self._supplement_file_name(
@@ -695,7 +696,7 @@ class MapData:
         """
         Save the current array of emission line intensities to disk.
         """
-        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading emission line intensities")
+        sprint(f"loading emission line intensities")
         with open(
             self.file_path.with_name(
                 self._supplement_file_name(

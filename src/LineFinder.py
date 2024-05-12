@@ -146,7 +146,7 @@ class LineFinder():
         name: str,
         wvl: np.array = None,
         scale: bool = True,
-        show_cond: bool = True
+        show: bool = True
     ) -> None:
         """Add a new spectrum to the existing plot.
 
@@ -155,7 +155,7 @@ class LineFinder():
             name (str): The name to identify the new spectrum in the plot (it's label in the legend).
             wvl (np.array, optional): A wavelength vector corresponding to the new spectrum, if differs from the existing wavelengths. Defaults to None.
             scale (bool, optional): Whether to scale the new spectrum by the initial spectrum's maximum. Defaults to True.
-            show_cond (bool, optional): Whether to show the updated figure. Defaults to True.
+            show (bool, optional): Whether to show the updated figure. Defaults to True.
         """
         if self.plot is None:
             print('creating base plot')
@@ -176,7 +176,7 @@ class LineFinder():
             )
         )
 
-        if show_cond:
+        if show:
             self.plot.show()
 
     def find_peaks_in_reference(

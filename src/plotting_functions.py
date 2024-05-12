@@ -160,12 +160,13 @@ def plot_single_variable_map(
     cutoff_bin = bin_centers[:-1][
         np.cumsum(counts) >= (total_counts * cutoff_quantile)
     ][0]
+    aspect_ratio = np.divide.reduce(plot_values)
 
     fig, ax = plt.subplots(
         1, 1,
         figsize=(
             3*fig_size_scaling,
-            3*fig_size_scaling
+            3*fig_size_scaling*aspect_ratio,
         )
     )
 
@@ -191,7 +192,7 @@ def plot_single_variable_map(
     fig.tight_layout()
     fig.show()
 
-    if file_id:
+    if file_id is not None:
         fig.savefig(
             f'./temp/{file_id}.png',
             transparent=True,
