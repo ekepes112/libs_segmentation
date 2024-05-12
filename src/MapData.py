@@ -16,7 +16,7 @@ from scipy.interpolate import interp1d
 
 
 def sprint(s: str) -> None:
-    sprint(f"{s}")
+    print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: {s}")
 
 class MapData:
     """
@@ -65,7 +65,7 @@ class MapData:
             )[0].split('x')
             self.map_dimensions = [int(x) for x in map_dimensions]
         except IndexError:
-            print('No map dimensions found')
+            sprint('No map dimensions found')
 
     def get_metadata(self) -> None:
         """
