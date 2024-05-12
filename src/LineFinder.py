@@ -3,6 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.signal import find_peaks
 from pathlib import Path
+import datetime
 
 from .plotting_functions import _update_layout
 
@@ -55,7 +56,6 @@ class LineFinder():
         Returns:
             None
         """
-
         self.hist_counts, self.hist_bins = np.histogram(
             self.spectrum,
             bins=1000
@@ -75,6 +75,7 @@ class LineFinder():
         """
         Wrapper around the scikit.signal find_peaks function.
         """
+        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: performing line finding")
         if self.hist_bins is None:
             self.get_histogram()
         if height is None:
@@ -104,12 +105,12 @@ class LineFinder():
         try:
             getattr(self, 'peaks')
         except AttributeError:
-            print('performing line finding')
             self.find_lines()
 
         if self.plot is None:
             self.create_base_plot()
 
+        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: plotting found lines")
         self.plot.add_trace(
             go.Scatter(
                 x=self.wvl[self.peaks[0]],
@@ -196,12 +197,10 @@ class LineFinder():
             show_cond (bool, optional): Whether to show the updated figure. Defaults to True.
         """
         if self.plot is None:
-            print('creating base plot')
             self.plot_found_lines(False)
         try:
             getattr(self, 'peaks')
         except AttributeError:
-            print('performing line finding')
             self.find_lines()
 
         if wvl is None:
@@ -462,12 +461,10 @@ class LineFinder():
         try:
             getattr(self, 'plot')
         except AttributeError:
-            print('creating base plot')
             self.plot_found_lines(False)
         try:
             getattr(self, 'peaks')
         except AttributeError:
-            print('performing line finding')
             self.find_lines()
         try:
             getattr(self, 'potential_lines')
@@ -519,6 +516,7 @@ class LineFinder():
         self,
         source_path: Path
     ):
+        print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading NIST tables")
         table_files = pd.DataFrame(
             source_path.glob('*.txt'),
             columns=['file']

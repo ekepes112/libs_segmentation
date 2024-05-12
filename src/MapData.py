@@ -234,9 +234,7 @@ class MapData:
             self.overwrite = True
 
         if self.overwrite:
-            print(
-                'loading raw data'
-            )
+            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading raw data")
             if self.data_type is None:
                 self.create_data_type()
             self.spectra = np.fromfile(
@@ -245,6 +243,7 @@ class MapData:
                 offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
             )['data']
         elif self._check_file(file_name_supplement) and not self.overwrite:
+            print(f"{datetime.datetime.now().strftime('%H:%M:%S')} :: loading processed data")
             self.spectra = np.load(
                 self.file_path.with_name(
                     self._supplement_file_name(file_name_supplement)
@@ -716,7 +715,6 @@ def _check_dict_lowest_level(data: dict) -> bool:
     if isinstance(top_level_instance, dict):
         return _check_dict_lowest_level(top_level_instance)
     return type(top_level_instance)
-
 
 def min_max_dist(
     arr: np.array,
