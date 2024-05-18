@@ -585,7 +585,7 @@ class MapData:
         diff_arr = np.diff(arr[:, :].copy())
         return np.median(
             diff_arr.copy(),
-            axis=0,
+            # axis=0,
             keepdims=True
         ) / 2
 
