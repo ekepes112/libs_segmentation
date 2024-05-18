@@ -335,11 +335,12 @@ class MapData:
                 ),
                 window_width=min_window_size
             )
+            smoothing_kernel = self._get_smoothing_kernel(smooth_window_size)
             self.baselines = np.apply_along_axis(
                 arr=local_minima,
                 func1d=np.convolve,
                 axis=1,
-                v=self._get_smoothing_kernel(smooth_window_size),
+                v=smoothing_kernel,
                 mode='valid'
             )
 
@@ -748,7 +749,6 @@ def _check_dict_lowest_level(data: dict) -> bool:
         return _check_dict_lowest_level(top_level_instance)
     return type(top_level_instance)
 
-@njit(nopython=True)
 def min_max_dist(
     arr: np.array,
     axis: int = 1
