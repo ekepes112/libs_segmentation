@@ -577,14 +577,14 @@ class MapData:
         """
         if self.overwrite:
             sprint(f"estimating systemic noise spectrum")
-            self.systemic_noise_spectrum = self._get_systemic_noise(self.spectra.copy())
+            self.systemic_noise_spectrum = self._get_systemic_noise(self.spectra)
 
     @staticmethod
     @njit(nopython=True)
     def _get_systemic_noise(arr: np.ndarray) -> np.ndarray:
-        diff_arr = np.diff(arr[:, :])
+        diff_arr = np.diff(arr[:, :].copy())
         return np.median(
-            diff_arr,
+            diff_arr.copy(),
             axis=0,
             keepdims=True
         ) / 2
