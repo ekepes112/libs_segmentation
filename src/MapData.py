@@ -384,6 +384,7 @@ class MapData:
         ) or overwrite:
             self.calculate_emission_line_intensities()
             self._save_line_intensities()
+            self._line_intensities_to_arrays()
         else:
             self._load_line_intensities()
 
