@@ -565,7 +565,8 @@ class MapData:
                 level=level,
                 wavelet=wavelet,
             )
-        return denoised_arr
+        self.spectra = denoised_arr.copy()
+        return None
 
     def estimate_systemic_noise(self) -> None:
         """
@@ -576,7 +577,7 @@ class MapData:
         """
         if self.overwrite:
             sprint(f"estimating systemic noise spectrum")
-            self.systemic_noise_spectrum = self._get_systemic_noise(self.spectra)
+            self.systemic_noise_spectrum = self._get_systemic_noise(self.spectra.copy())
 
     @staticmethod
     @njit(nopython=True)
