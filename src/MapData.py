@@ -436,7 +436,7 @@ class MapData:
 
     def vector_to_array(
         self,
-        data: np.array
+        data: np.array,
     ) -> np.array:
         """Reshapes a spectrum-wise summary statistic (e.g., integrated intensity) into an array with the map's dimensions.
 
@@ -448,6 +448,14 @@ class MapData:
         """
         data = data.copy().reshape(self.map_dimensions[::-1])
         data[::2, :] = data[::2, ::-1]
+        return data
+
+    def array_to_vector(
+        self,
+        data: np.array,
+    ) -> np.array:
+        data[::2, :] = data[::2, ::-1]
+        data = data.copy().reshape(-1,1)
         return data
 
     @staticmethod
