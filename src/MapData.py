@@ -270,9 +270,9 @@ class MapData:
 
     @staticmethod
     def _rolling_min(
-        arr: np.array,
+        arr: np.ndarray,
         window_width: int
-    ) -> np.array:
+    ) -> np.ndarray:
         """
         Calculates the moving minima in each row of the provided array.
 
@@ -292,7 +292,7 @@ class MapData:
         return np.amin(window, axis=len(arr.shape))
 
     @staticmethod
-    def _get_smoothing_kernel(window_width: int) -> np.array:
+    def _get_smoothing_kernel(window_width: int) -> np.ndarray:
         """
         Generates a Gaussian smoothin kernel of the desired width.
 
@@ -559,9 +559,9 @@ class MapData:
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
         denoised_arr = np.zeros_like(self.spectra)
-        for i in range(np.multiply.reduce(self.spectra.shape) -1):
-            denoised_arr[i,:] = self._denoise_spectrum(
-                self.spectra[i,:],
+        for i in range(np.multiply.reduce(self.spectra.shape)):
+            denoised_arr[i] = self._denoise_spectrum(
+                self.spectra[i],
                 level=level,
                 wavelet=wavelet,
             )
