@@ -806,6 +806,5 @@ def triangle_corr(
         coeffs[row_ndx] = np.corrcoef(arr[row_ndx], kernel)[0,1]
     return coeffs
 
-@njit(nopython=True)
 def maddest(d: np.ndarray, axis=None) -> np.ndarray:
     return np.mean(np.absolute(d - np.mean(d, axis)), axis)
