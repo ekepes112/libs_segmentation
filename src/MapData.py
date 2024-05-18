@@ -497,52 +497,52 @@ class MapData:
             )
         self.wvl = self._upsample_wvl(self.wvl)
 
+    # @staticmethod
+    # def _denoise_spectrum(
+    #     spectrum: np.array,
+    #     wavelet: pywt.Wavelet,
+    #     threshold: Union[float, Callable],
+    #     level: int = 9
+    # ) -> np.array:
+    #     """
+    #     Denoise a given spectrum using the provided wavelet, threshold value, and level of decomposition.
+
+    #     TODO test the removed noise's distribution for normality
+
+    #     Args:
+    #         spectrum (np.array): The spectrum to be denoised.
+    #         wavelet (pywt.Wavelet): The wavelet used for decomposition.
+    #         threshold (Union[float, Callable]): The threshold value or function used to threshold the coefficients.
+    #         level (int): The depth of decomposition.
+
+    #     Returns:
+    #         np.array: The denoised spectrum.
+    #     """
+    #     wavelet_docomposition = pywt.swt(
+    #         spectrum,
+    #         wavelet=wavelet,
+    #         level=level,
+    #         start_level=0,
+    #         trim_approx=False
+    #     )
+    #     if isinstance(threshold, Callable):
+    #         threshold = threshold(spectrum)
+    #     return pywt.iswt(
+    #         [
+    #             (x[0, :], x[1, :])
+    #             for x
+    #             in pywt.threshold(
+    #                 data=np.array(wavelet_docomposition),
+    #                 substitute=0,
+    #                 value=threshold,
+    #                 mode='soft'
+    #             )
+    #         ],
+    #         wavelet=wavelet
+    #     )
+
     @staticmethod
     def _denoise_spectrum(
-        spectrum: np.array,
-        wavelet: pywt.Wavelet,
-        threshold: Union[float, Callable],
-        level: int = 9
-    ) -> np.array:
-        """
-        Denoise a given spectrum using the provided wavelet, threshold value, and level of decomposition.
-
-        TODO test the removed noise's distribution for normality
-
-        Args:
-            spectrum (np.array): The spectrum to be denoised.
-            wavelet (pywt.Wavelet): The wavelet used for decomposition.
-            threshold (Union[float, Callable]): The threshold value or function used to threshold the coefficients.
-            level (int): The depth of decomposition.
-
-        Returns:
-            np.array: The denoised spectrum.
-        """
-        wavelet_docomposition = pywt.swt(
-            spectrum,
-            wavelet=wavelet,
-            level=level,
-            start_level=0,
-            trim_approx=False
-        )
-        if isinstance(threshold, Callable):
-            threshold = threshold(spectrum)
-        return pywt.iswt(
-            [
-                (x[0, :], x[1, :])
-                for x
-                in pywt.threshold(
-                    data=np.array(wavelet_docomposition),
-                    substitute=0,
-                    value=threshold,
-                    mode='soft'
-                )
-            ],
-            wavelet=wavelet
-        )
-
-    @staticmethod
-    def denoise(
         x: np.ndarray,
         wavelet: str = 'db6',
         level: int = 2
@@ -555,14 +555,13 @@ class MapData:
 
     def denoise_spectra(
         self,
-        arr: np.ndarray,
         level: int = 2,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
-        denoised_arr = np.zeros_like(arr)
-        for i in range(np.multiply.reduce(arr.shape)):
-            denoised_arr[i] = self.denoise(
-                arr[i],
+        denoised_arr = np.zeros_like(self.spectra)
+        for i in range(np.multiply.reduce(self.spectra.shape)):
+            denoised_arr[i,:] = self.denoise(
+                self.spectra[i,:],
                 level=level,
                 wavelet=wavelet,
             )
@@ -577,12 +576,17 @@ class MapData:
         """
         if self.overwrite:
             sprint(f"estimating systemic noise spectrum")
-            diff_spectra = np.diff(self.spectra[:, :])
-            self.systemic_noise_spectrum = np.median(
-                diff_spectra,
-                axis=0,
-                keepdims=True
-            ) / 2
+            self.systemic_noise_spectrum = self._get_systemic_noise(self.spectra)
+
+    @staticmethod
+    @njit(nopython=True)
+    def _get_systemic_noise(arr: np.ndarray) -> np.ndarray:
+        diff_arr = np.diff(arr[:, :])
+        return np.median(
+            diff_arr,
+            axis=0,
+            keepdims=True
+        ) / 2
 
     # def denoise_spectra(
     #     self,
