@@ -560,7 +560,7 @@ class MapData:
     ):
         denoised_arr = np.zeros_like(self.spectra)
         for i in range(np.multiply.reduce(self.spectra.shape)):
-            denoised_arr[i,:] = self.denoise(
+            denoised_arr[i,:] = self._denoise_spectrum(
                 self.spectra[i,:],
                 level=level,
                 wavelet=wavelet,
