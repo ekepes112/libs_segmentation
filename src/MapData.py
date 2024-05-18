@@ -559,7 +559,7 @@ class MapData:
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
         denoised_arr = np.zeros_like(self.spectra)
-        for i in range(np.multiply.reduce(self.spectra.shape)):
+        for i in range(np.multiply.reduce(self.spectra.shape) -1):
             denoised_arr[i,:] = self._denoise_spectrum(
                 self.spectra[i,:],
                 level=level,
