@@ -541,6 +541,33 @@ class MapData:
             wavelet=wavelet
         )
 
+    @staticmethod
+    def denoise(
+        x: np.ndarray,
+        wavelet: str = 'db6',
+        level: int = 2
+    ) -> np.ndarray:
+        coeff = pywt.wavedec(x, wavelet, mode="reflect", level=level+2)
+        sigma = (1/0.6745) * maddest(coeff[-level])
+        uthresh = sigma * np.sqrt(2*np.log(len(x)))
+        coeff[1:] = (pywt.threshold(i, value=uthresh, mode='hard', substitute=0) for i in coeff[1:])
+        return pywt.waverec(coeff, wavelet)
+
+    def denoise_spectra(
+        self,
+        arr: np.ndarray,
+        level: int = 2,
+        wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
+    ):
+        denoised_arr = np.zeros_like(arr)
+        for i in range(np.multiply.reduce(arr.shape)):
+            denoised_arr[i] = self.denoise(
+                arr[i],
+                level=level,
+                wavelet=wavelet,
+            )
+        return denoised_arr
+
     def estimate_systemic_noise(self) -> None:
         """
         Estimate the systemic noise spectrum.
@@ -557,33 +584,33 @@ class MapData:
                 keepdims=True
             ) / 2
 
-    def denoise_spectra(
-        self,
-        wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
-        threshold: Union[float, Callable] = 35.,
-        level: int = 9
-    ) -> None:
-        """
-        Apply wavelet denoising to the spectra data along the second axis.
+    # def denoise_spectra(
+    #     self,
+    #     wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
+    #     threshold: Union[float, Callable] = 35.,
+    #     level: int = 9
+    # ) -> None:
+    #     """
+    #     Apply wavelet denoising to the spectra data along the second axis.
 
-        Args:
-            wavelet (pywt.Wavelet): wavelet to use for the transformation (default: 'rbio6.8')
-            threshold (threshold: float or callable): threshold for wavelet coefficients (default: 35.)
-            level (int): wavelet decomposition level (default: 9)
+    #     Args:
+    #         wavelet (pywt.Wavelet): wavelet to use for the transformation (default: 'rbio6.8')
+    #         threshold (threshold: float or callable): threshold for wavelet coefficients (default: 35.)
+    #         level (int): wavelet decomposition level (default: 9)
 
-        Returns:
-            None
-        """
-        if self.overwrite:
-            sprint(f"denoising spectra")
-            self.spectra = np.apply_along_axis(
-                func1d=self._denoise_spectrum,
-                axis=1,
-                arr=self.spectra,
-                wavelet=wavelet,
-                threshold=threshold,
-                level=level
-            )
+    #     Returns:
+    #         None
+    #     """
+    #     if self.overwrite:
+    #         sprint(f"denoising spectra")
+    #         self.spectra = np.apply_along_axis(
+    #             func1d=self._denoise_spectrum,
+    #             axis=1,
+    #             arr=self.spectra,
+    #             wavelet=wavelet,
+    #             threshold=threshold,
+    #             level=level
+    #         )
 
     def _supplement_file_name(
         self,
@@ -717,6 +744,7 @@ def _check_dict_lowest_level(data: dict) -> bool:
         return _check_dict_lowest_level(top_level_instance)
     return type(top_level_instance)
 
+@njit(nopython=True)
 def min_max_dist(
     arr: np.array,
     axis: int = 1
@@ -733,7 +761,7 @@ def min_max_dist(
     """
     return np.max(arr, axis=axis) - np.min(arr, axis=axis)
 
-@njit
+@njit(nopython=True)
 def get_triangular_kernel(size: int) -> np.ndarray:
     """
     Generates a triangular kernel of a given size.
@@ -746,7 +774,7 @@ def get_triangular_kernel(size: int) -> np.ndarray:
     """
     return np.concatenate((np.arange(1, size), np.arange(size, 0, -1))) / size
 
-@njit
+@njit(nopython=True)
 def triangle_corr(
     arr: np.ndarray,
     axis: int = 1
@@ -773,3 +801,7 @@ def triangle_corr(
     for row_ndx in range(num_rows):
         coeffs[row_ndx] = np.corrcoef(arr[row_ndx], kernel)[0,1]
     return coeffs
+
+@njit(nopython=True)
+def maddest(d: np.ndarray, axis=None) -> np.ndarray:
+    return np.mean(np.absolute(d - np.mean(d, axis)), axis)
