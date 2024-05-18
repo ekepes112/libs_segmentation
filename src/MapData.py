@@ -586,7 +586,7 @@ class MapData:
         return np.median(
             diff_arr.copy(),
             # axis=0,
-            keepdims=True
+            # keepdims=True
         ) / 2
 
     # def denoise_spectra(
