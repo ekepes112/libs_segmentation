@@ -507,50 +507,6 @@ class MapData:
             )
         self.wvl = self._upsample_wvl(self.wvl)
 
-    # @staticmethod
-    # def _denoise_spectrum(
-    #     spectrum: np.array,
-    #     wavelet: pywt.Wavelet,
-    #     threshold: Union[float, Callable],
-    #     level: int = 9
-    # ) -> np.array:
-    #     """
-    #     Denoise a given spectrum using the provided wavelet, threshold value, and level of decomposition.
-
-    #     TODO test the removed noise's distribution for normality
-
-    #     Args:
-    #         spectrum (np.array): The spectrum to be denoised.
-    #         wavelet (pywt.Wavelet): The wavelet used for decomposition.
-    #         threshold (Union[float, Callable]): The threshold value or function used to threshold the coefficients.
-    #         level (int): The depth of decomposition.
-
-    #     Returns:
-    #         np.array: The denoised spectrum.
-    #     """
-    #     wavelet_docomposition = pywt.swt(
-    #         spectrum,
-    #         wavelet=wavelet,
-    #         level=level,
-    #         start_level=0,
-    #         trim_approx=False
-    #     )
-    #     if isinstance(threshold, Callable):
-    #         threshold = threshold(spectrum)
-    #     return pywt.iswt(
-    #         [
-    #             (x[0, :], x[1, :])
-    #             for x
-    #             in pywt.threshold(
-    #                 data=np.array(wavelet_docomposition),
-    #                 substitute=0,
-    #                 value=threshold,
-    #                 mode='soft'
-    #             )
-    #         ],
-    #         wavelet=wavelet
-    #     )
-
     @staticmethod
     def _denoise_spectrum(
         x: np.ndarray,
@@ -597,34 +553,6 @@ class MapData:
             axis=0,
             keepdims=True
         ) / 2
-
-    # def denoise_spectra(
-    #     self,
-    #     wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
-    #     threshold: Union[float, Callable] = 35.,
-    #     level: int = 9
-    # ) -> None:
-    #     """
-    #     Apply wavelet denoising to the spectra data along the second axis.
-
-    #     Args:
-    #         wavelet (pywt.Wavelet): wavelet to use for the transformation (default: 'rbio6.8')
-    #         threshold (threshold: float or callable): threshold for wavelet coefficients (default: 35.)
-    #         level (int): wavelet decomposition level (default: 9)
-
-    #     Returns:
-    #         None
-    #     """
-    #     if self.overwrite:
-    #         sprint(f"denoising spectra")
-    #         self.spectra = np.apply_along_axis(
-    #             func1d=self._denoise_spectrum,
-    #             axis=1,
-    #             arr=self.spectra,
-    #             wavelet=wavelet,
-    #             threshold=threshold,
-    #             level=level
-    #         )
 
     def _supplement_file_name(
         self,
@@ -677,7 +605,7 @@ class MapData:
         """
         sprint(f"saving spectra")
         np.save(
-            arr=self.spectra,
+            arr=self.spectra.astype(np.float16),
             file=self.file_path.with_name(
                 self._supplement_file_name(file_name_supplement)
             )
