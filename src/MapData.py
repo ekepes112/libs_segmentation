@@ -455,7 +455,7 @@ class MapData:
         data: np.array,
     ) -> np.array:
         data[::2, :] = data[::2, ::-1]
-        data = data.copy().reshape(-1,1)
+        data = data.copy().reshape(-1)
         return data
 
     @staticmethod
