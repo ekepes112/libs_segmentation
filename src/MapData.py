@@ -243,17 +243,15 @@ class MapData:
 
     def load_all_data(
         self,
-        file_name: str = '',
+        file_name: str = None,
     ) -> None:
         """
         Loads all spectra from the file
         """
-        if not self._touch_path(
-            self.output_dir.joinpath(f"processed_data/{file_name}.npy")
-        ):
+        if not self._load_spectra(file_name):
             sprint(f"preprocessed file was not found; setting overwrite to True")
             self.overwrite = True
-        if (file_name == '') or self.overwrite:
+        if (file_name is None) or self.overwrite:
             sprint(f"loading raw data")
             if self.data_type is None:
                 self.create_data_type()
@@ -262,20 +260,15 @@ class MapData:
                 self.data_type,
                 offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
             )['data']
-            return None
 
-        elif not self.overwrite:
-            self._load_spectra(file_name)
-
-    def _load_spectra(self, file_name: str) -> None:
-        sprint(f"loading processed data")
-        self.spectra = np.load(
-            self.output_dir.joinpath(
-                f"processed_data/{file_name}.npy"
-            ),
-            allow_pickle=False
-        )
-
+    def _load_spectra(self, file_name: str) -> bool:
+        data_path = self.output_dir.joinpath(f"processed_data/{file_name}.npy")
+        if data_path.exists():
+            sprint(f"loading processed data")
+            self.spectra = np.load(data_path, allow_pickle=False)
+            return True
+        else:
+            return False
 
     def trim_spectra(
         self,
@@ -407,20 +400,15 @@ class MapData:
         overwrite: bool = False,
         file_name: str = 'lineIntensities',
     ) -> None:
-
-        if not self._touch_path(
-            self.output_dir.joinpath(f"emission_lines/{file_name}.json")
-        ) or overwrite:
+        file_path = self.output_dir.joinpath(f"emission_lines/{file_name}.json")
+        if not self._touch_path(file_path) or overwrite:
             self.calculate_emission_line_intensities()
-            self._save_line_intensities()
+            self._save_line_intensities(file_path)
             self._line_intensities_to_arrays()
         else:
             self._load_line_intensities()
 
-    def set_emisssion_line_functions(
-        self,
-        intensity_funcs: List[Callable],
-    ):
+    def set_emisssion_line_functions(self, intensity_funcs: List[Callable]):
         self.intensity_funcs = intensity_funcs
 
     def set_emission_line_parameters(
@@ -553,6 +541,7 @@ class MapData:
         level: int = 2,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
+        sprint("denoising spectra")
         denoised_arr = np.zeros_like(self.spectra)
         for i in range(len(self.spectra)):
             denoised_arr[i] = self._denoise_spectrum(
