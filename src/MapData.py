@@ -406,7 +406,7 @@ class MapData:
             self._save_line_intensities(file_path)
             self._line_intensities_to_arrays()
         else:
-            self._load_line_intensities()
+            self._load_line_intensities(file_path)
 
     def set_emisssion_line_functions(self, intensity_funcs: List[Callable]):
         self.intensity_funcs = intensity_funcs
