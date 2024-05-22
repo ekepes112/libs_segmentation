@@ -145,22 +145,20 @@ def plot_embedding(
 
 
 def plot_single_variable_map(
-    plot_values: np.array,
+    arr: np.array,
     file_id: str = None,
     figure_title: str = None,
     colorbar_title: str = None,
     fig_size_scaling: float = 1.,
     cutoff_quantile: float = .99
 ):
-    counts, bin_centers = np.histogram(
-        plot_values,
-        bins=100
-    )
+    NUM_QUANTILES = 100
+    counts, bin_centers = np.histogram(arr, bins=NUM_QUANTILES)
     total_counts = np.sum(counts)
     cutoff_bin = bin_centers[:-1][
         np.cumsum(counts) >= (total_counts * cutoff_quantile)
     ][0]
-    aspect_ratio = np.divide.reduce(plot_values)
+    aspect_ratio = np.divide.reduce(arr.shape)
 
     fig, ax = plt.subplots(
         1, 1,
@@ -171,7 +169,7 @@ def plot_single_variable_map(
     )
 
     image = ax.imshow(
-        plot_values,
+        arr,
         cmap='plasma',
         interpolation='bicubic',
         interpolation_stage='rgba',
@@ -183,7 +181,7 @@ def plot_single_variable_map(
     ax.set_yticks([])
     ax.axes.set_alpha(0)
 
-    color_bar = fig.colorbar(image)
+    color_bar = fig.colorbar(image, fraction=.02, pad=.002)
     if colorbar_title:
         color_bar.ax.set_title(colorbar_title)
     if figure_title:

@@ -27,6 +27,16 @@ class MapData:
         file_path: str = None,
         overwrite: bool = False
     ) -> None:
+        """
+        Initializes a new instance of the MapData class.
+
+        Parameters:
+            file_path (str, optional): The path to the LIBS data file. If not provided, a file dialog will be opened to select the file. Defaults to None.
+            overwrite (bool, optional): Whether to overwrite existing data. Defaults to False.
+
+        Returns:
+            None
+        """
         if file_path is None:
             self.file_path = Path(
                 filedialog.askopenfilename(
@@ -52,6 +62,12 @@ class MapData:
         self.right_boundaries = None
         self.line_centers = None
         self.intensity_funcs = None
+
+    def set_output_dir(self, output_dir: Path = None):
+        if output_dir is None:
+            self.output_dir = self.file_path.parent
+        else:
+            self.output_dir = output_dir
 
     def get_map_dimensions(self) -> None:
         """
@@ -354,7 +370,9 @@ class MapData:
 
     def baseline_correct(
         self,
-        keep_baselines: bool = False
+        keep_baselines: bool = False,
+        min_window_size: int = 50,
+        smooth_window_size: int = None,
     ) -> None:
         """
         Subtracts the baselines from the spectra.
@@ -363,7 +381,10 @@ class MapData:
             keep_baselines (bool, optional): Whether to keep or discard the baselines. Defaults to False.
         """
         if self.overwrite:
-            self.get_baseline()
+            self.get_baseline(
+                min_window_size=min_window_size,
+                smooth_window_size=smooth_window_size,
+            )
             self._align_baselines_with_spectra()
             self.spectra = np.subtract(
                 self.spectra,
@@ -375,12 +396,10 @@ class MapData:
 
     def get_emission_line_intensities(
         self,
-        overwrite: bool = False
+        overwrite: bool = False,
+        file_name: str = 'lineIntensities',
     ) -> None:
-        if not self._check_file(
-            'lineIntensities',
-            'json'
-        ) or overwrite:
+        if not self._check_file(file_name, 'json') or overwrite:
             self.calculate_emission_line_intensities()
             self._save_line_intensities()
         else:
