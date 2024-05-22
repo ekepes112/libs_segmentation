@@ -542,14 +542,15 @@ class MapData:
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
         sprint("denoising spectra")
-        denoised_arr = np.zeros_like(self.spectra)
-        for i in range(len(self.spectra)):
-            denoised_arr[i] = self._denoise_spectrum(
-                self.spectra[i],
-                level=level,
-                wavelet=wavelet,
-            )
-        self.spectra = denoised_arr.copy()
+        if self.overwrite:
+            denoised_arr = np.zeros_like(self.spectra)
+            for i in range(len(self.spectra)):
+                denoised_arr[i] = self._denoise_spectrum(
+                    self.spectra[i],
+                    level=level,
+                    wavelet=wavelet,
+                )
+            self.spectra = denoised_arr.copy()
         return None
 
     def estimate_systemic_noise(self) -> None:
