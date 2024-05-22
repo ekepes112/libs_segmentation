@@ -625,7 +625,7 @@ class MapData:
                     self.line_intensities[func][line]
                 )
 
-    def _save_line_intensities(self, file_name: str) -> None:
+    def _save_line_intensities(self, file_path: Path) -> None:
         """
         Save the current array of emission line intensities to disk.
         """
@@ -634,19 +634,15 @@ class MapData:
         # if _check_dict_lowest_level(self.line_intensities) is not list:
         finally:
             sprint(f"saving emission line intensities")
-            with open(self.output_dir.joinpath(
-                f"emission_lines/{file_name}.json"
-            ),'w', encoding='utf-8') as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump(self.line_intensities, file)
 
-    def _load_line_intensities(self, file_name: str) -> None:
+    def _load_line_intensities(self, file_path: Path) -> None:
         """
         Save the current array of emission line intensities to disk.
         """
         sprint(f"loading emission line intensities")
-        with open(self.output_dir.joinpath(
-            f"emission_lines/{file_name}.json"
-        ), 'r', encoding='utf-8') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             self.line_intensities = json.load(file)
         self._line_intensities_to_arrays()
 
