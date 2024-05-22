@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import logging
 import plotly.graph_objects as go
@@ -151,7 +152,7 @@ def plot_single_variable_map(
     colorbar_title: str = None,
     fig_size_scaling: float = 1.,
     cutoff_quantile: float = .99
-):
+) -> matplotlib.figure.Figure:
     NUM_QUANTILES = 100
     counts, bin_centers = np.histogram(arr, bins=NUM_QUANTILES)
     total_counts = np.sum(counts)
@@ -196,6 +197,7 @@ def plot_single_variable_map(
             transparent=True,
             dpi=300
         )
+    return fig
 
 
 def _update_layout(

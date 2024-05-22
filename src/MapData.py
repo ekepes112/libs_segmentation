@@ -286,9 +286,9 @@ class MapData:
 
     @staticmethod
     def _rolling_min(
-        arr: np.array,
+        arr: np.ndarray,
         window_width: int
-    ) -> np.array:
+    ) -> np.ndarray:
         """
         Calculates the moving minima in each row of the provided array.
 
@@ -308,7 +308,7 @@ class MapData:
         return np.amin(window, axis=len(arr.shape))
 
     @staticmethod
-    def _get_smoothing_kernel(window_width: int) -> np.array:
+    def _get_smoothing_kernel(window_width: int) -> np.ndarray:
         """
         Generates a Gaussian smoothin kernel of the desired width.
 
@@ -351,11 +351,12 @@ class MapData:
                 ),
                 window_width=min_window_size
             )
+            smoothing_kernel = self._get_smoothing_kernel(smooth_window_size)
             self.baselines = np.apply_along_axis(
                 arr=local_minima,
                 func1d=np.convolve,
                 axis=1,
-                v=self._get_smoothing_kernel(smooth_window_size),
+                v=smoothing_kernel,
                 mode='valid'
             )
 
@@ -402,6 +403,7 @@ class MapData:
         if not self._check_file(file_name, 'json') or overwrite:
             self.calculate_emission_line_intensities()
             self._save_line_intensities()
+            self._line_intensities_to_arrays()
         else:
             self._load_line_intensities()
 
@@ -453,7 +455,7 @@ class MapData:
 
     def vector_to_array(
         self,
-        data: np.array
+        data: np.array,
     ) -> np.array:
         """Reshapes a spectrum-wise summary statistic (e.g., integrated intensity) into an array with the map's dimensions.
 
@@ -465,6 +467,14 @@ class MapData:
         """
         data = data.copy().reshape(self.map_dimensions[::-1])
         data[::2, :] = data[::2, ::-1]
+        return data
+
+    def array_to_vector(
+        self,
+        data: np.array,
+    ) -> np.array:
+        data[::2, :] = data[::2, ::-1]
+        data = data.copy().reshape(-1)
         return data
 
     @staticmethod
@@ -518,47 +528,30 @@ class MapData:
 
     @staticmethod
     def _denoise_spectrum(
-        spectrum: np.array,
-        wavelet: pywt.Wavelet,
-        threshold: Union[float, Callable],
-        level: int = 9
-    ) -> np.array:
-        """
-        Denoise a given spectrum using the provided wavelet, threshold value, and level of decomposition.
+        x: np.ndarray,
+        wavelet: str = 'db6',
+        level: int = 2
+    ) -> np.ndarray:
+        coeff = pywt.wavedec(x, wavelet, mode="reflect", level=level+2)
+        sigma = (1/0.6745) * maddest(coeff[-level])
+        uthresh = sigma * np.sqrt(2*np.log(len(x)))
+        coeff[1:] = (pywt.threshold(i, value=uthresh, mode='hard', substitute=0) for i in coeff[1:])
+        return pywt.waverec(coeff, wavelet)
 
-        TODO test the removed noise's distribution for normality
-
-        Args:
-            spectrum (np.array): The spectrum to be denoised.
-            wavelet (pywt.Wavelet): The wavelet used for decomposition.
-            threshold (Union[float, Callable]): The threshold value or function used to threshold the coefficients.
-            level (int): The depth of decomposition.
-
-        Returns:
-            np.array: The denoised spectrum.
-        """
-        wavelet_docomposition = pywt.swt(
-            spectrum,
-            wavelet=wavelet,
-            level=level,
-            start_level=0,
-            trim_approx=False
-        )
-        if isinstance(threshold, Callable):
-            threshold = threshold(spectrum)
-        return pywt.iswt(
-            [
-                (x[0, :], x[1, :])
-                for x
-                in pywt.threshold(
-                    data=np.array(wavelet_docomposition),
-                    substitute=0,
-                    value=threshold,
-                    mode='soft'
-                )
-            ],
-            wavelet=wavelet
-        )
+    def denoise_spectra(
+        self,
+        level: int = 2,
+        wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
+    ):
+        denoised_arr = np.zeros_like(self.spectra)
+        for i in range(len(self.spectra)):
+            denoised_arr[i] = self._denoise_spectrum(
+                self.spectra[i],
+                level=level,
+                wavelet=wavelet,
+            )
+        self.spectra = denoised_arr.copy()
+        return None
 
     def estimate_systemic_noise(self) -> None:
         """
@@ -569,40 +562,16 @@ class MapData:
         """
         if self.overwrite:
             sprint(f"estimating systemic noise spectrum")
-            diff_spectra = np.diff(self.spectra[:, :])
-            self.systemic_noise_spectrum = np.median(
-                diff_spectra,
-                axis=0,
-                keepdims=True
-            ) / 2
+            self.systemic_noise_spectrum = self._get_systemic_noise(self.spectra)
 
-    def denoise_spectra(
-        self,
-        wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
-        threshold: Union[float, Callable] = 35.,
-        level: int = 9
-    ) -> None:
-        """
-        Apply wavelet denoising to the spectra data along the second axis.
-
-        Args:
-            wavelet (pywt.Wavelet): wavelet to use for the transformation (default: 'rbio6.8')
-            threshold (threshold: float or callable): threshold for wavelet coefficients (default: 35.)
-            level (int): wavelet decomposition level (default: 9)
-
-        Returns:
-            None
-        """
-        if self.overwrite:
-            sprint(f"denoising spectra")
-            self.spectra = np.apply_along_axis(
-                func1d=self._denoise_spectrum,
-                axis=1,
-                arr=self.spectra,
-                wavelet=wavelet,
-                threshold=threshold,
-                level=level
-            )
+    @staticmethod
+    def _get_systemic_noise(arr: np.ndarray) -> np.ndarray:
+        diff_arr = np.diff(arr[:, :])
+        return np.median(
+            diff_arr,
+            axis=0,
+            keepdims=True
+        ) / 2
 
     def _supplement_file_name(
         self,
@@ -655,7 +624,7 @@ class MapData:
         """
         sprint(f"saving spectra")
         np.save(
-            arr=self.spectra,
+            arr=self.spectra.astype(np.float16),
             file=self.file_path.with_name(
                 self._supplement_file_name(file_name_supplement)
             )
@@ -752,7 +721,7 @@ def min_max_dist(
     """
     return np.max(arr, axis=axis) - np.min(arr, axis=axis)
 
-@njit
+@njit(nopython=True)
 def get_triangular_kernel(size: int) -> np.ndarray:
     """
     Generates a triangular kernel of a given size.
@@ -765,7 +734,7 @@ def get_triangular_kernel(size: int) -> np.ndarray:
     """
     return np.concatenate((np.arange(1, size), np.arange(size, 0, -1))) / size
 
-@njit
+@njit(nopython=True)
 def triangle_corr(
     arr: np.ndarray,
     axis: int = 1
@@ -792,3 +761,6 @@ def triangle_corr(
     for row_ndx in range(num_rows):
         coeffs[row_ndx] = np.corrcoef(arr[row_ndx], kernel)[0,1]
     return coeffs
+
+def maddest(d: np.ndarray, axis=None) -> np.ndarray:
+    return np.mean(np.absolute(d - np.mean(d, axis)), axis)
