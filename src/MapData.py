@@ -402,10 +402,12 @@ class MapData:
     ) -> None:
         file_path = self.output_dir.joinpath(f"emission_lines/{file_name}.json")
         if not self._touch_path(file_path) or overwrite:
+            sprint(f"calculating emission line intensities")
             self.calculate_emission_line_intensities()
             self._save_line_intensities(file_path)
             self._line_intensities_to_arrays()
         else:
+            sprint(f"loading emission line intensities")
             self._load_line_intensities(file_path)
 
     def set_emisssion_line_functions(self, intensity_funcs: List[Callable]):
@@ -541,8 +543,8 @@ class MapData:
         level: int = 2,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
-        sprint("denoising spectra")
         if self.overwrite:
+            sprint("denoising spectra")
             denoised_arr = np.zeros_like(self.spectra)
             for i in range(len(self.spectra)):
                 denoised_arr[i] = self._denoise_spectrum(
@@ -591,11 +593,12 @@ class MapData:
         """
         Save the current array of spectra to disk.
         """
-        sprint(f"saving spectra")
-        np.save(
-            arr=self.spectra.astype(np.float16),
-            file=self.output_dir.joinpath(f"processed_data/{file_name}.npy"),
-        )
+        if self.overwrite:
+            sprint(f"saving spectra")
+            np.save(
+                arr=self.spectra.astype(np.float16),
+                file=self.output_dir.joinpath(f"processed_data/{file_name}.npy"),
+            )
 
     def _line_intensities_to_list(self) -> None:
         """
