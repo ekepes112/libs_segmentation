@@ -552,6 +552,7 @@ class MapData:
                     level=level,
                     wavelet=wavelet,
                 )
+            self.removed_noise: np.ndarray = denoised_arr - self.spectra
             self.spectra = denoised_arr.copy()
         return None
 
