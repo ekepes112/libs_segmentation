@@ -159,7 +159,7 @@ def plot_single_variable_map(
     cutoff_bin = bin_centers[:-1][
         np.cumsum(counts) >= (total_counts * cutoff_quantile)
     ][0]
-    aspect_ratio = np.divide.reduce(arr.shape)
+    aspect_ratio = np.divide.reduce(arr.shape[:2])
 
     fig, ax = plt.subplots(
         1, 1,
