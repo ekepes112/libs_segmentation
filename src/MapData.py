@@ -243,16 +243,15 @@ class MapData:
 
     def load_all_data(
         self,
-        file_name_supplement: str
+        file_name: str = None,
     ) -> None:
         """
         Loads all spectra from the file
         """
-        if not self._check_file(file_name_supplement):
+        if not self._load_spectra(file_name):
             sprint(f"preprocessed file was not found; setting overwrite to True")
             self.overwrite = True
-
-        if self.overwrite:
+        if (file_name is None) or self.overwrite:
             sprint(f"loading raw data")
             if self.data_type is None:
                 self.create_data_type()
@@ -261,14 +260,15 @@ class MapData:
                 self.data_type,
                 offset=self.metadata.get('wavelengths') * self.BYTE_SIZE
             )['data']
-        elif self._check_file(file_name_supplement) and not self.overwrite:
+
+    def _load_spectra(self, file_name: str) -> bool:
+        data_path = self.output_dir.joinpath(f"processed_data/{file_name}.npy")
+        if data_path.exists():
             sprint(f"loading processed data")
-            self.spectra = np.load(
-                self.file_path.with_name(
-                    self._supplement_file_name(file_name_supplement)
-                ),
-                allow_pickle=False
-            )
+            self.spectra = np.load(data_path, allow_pickle=False)
+            return True
+        else:
+            return False
 
     def trim_spectra(
         self,
@@ -400,17 +400,17 @@ class MapData:
         overwrite: bool = False,
         file_name: str = 'lineIntensities',
     ) -> None:
-        if not self._check_file(file_name, 'json') or overwrite:
+        file_path = self.output_dir.joinpath(f"emission_lines/{file_name}.json")
+        if not self._touch_path(file_path) or overwrite:
+            sprint(f"calculating emission line intensities")
             self.calculate_emission_line_intensities()
-            self._save_line_intensities()
+            self._save_line_intensities(file_path)
             self._line_intensities_to_arrays()
         else:
-            self._load_line_intensities()
+            sprint(f"loading emission line intensities")
+            self._load_line_intensities(file_path)
 
-    def set_emisssion_line_functions(
-        self,
-        intensity_funcs: List[Callable],
-    ):
+    def set_emisssion_line_functions(self, intensity_funcs: List[Callable]):
         self.intensity_funcs = intensity_funcs
 
     def set_emission_line_parameters(
@@ -547,14 +547,17 @@ class MapData:
         level: int = 2,
         wavelet: pywt.Wavelet = pywt.Wavelet('rbio6.8'),
     ):
-        denoised_arr = np.zeros_like(self.spectra)
-        for i in range(len(self.spectra)):
-            denoised_arr[i] = self._denoise_spectrum(
-                self.spectra[i],
-                level=level,
-                wavelet=wavelet,
-            )
-        self.spectra = denoised_arr.copy()
+        if self.overwrite:
+            sprint("denoising spectra")
+            denoised_arr = np.zeros_like(self.spectra)
+            for i in range(len(self.spectra)):
+                denoised_arr[i] = self._denoise_spectrum(
+                    self.spectra[i],
+                    level=level,
+                    wavelet=wavelet,
+                )
+            self.removed_noise: np.ndarray = denoised_arr - self.spectra
+            self.spectra = denoised_arr.copy()
         return None
 
     def estimate_systemic_noise(self) -> None:
@@ -577,62 +580,30 @@ class MapData:
             keepdims=True
         ) / 2
 
-    def _supplement_file_name(
+    def _touch_path(
         self,
-        file_name_supplement: str,
-        extension: str = 'npy'
-    ) -> str:
-        """
-        Concatenates a given string to the file name stem, and returns the updated file
-        name with the chosen extension.
-
-        Args:
-            file_name_supplement (str): A string to append to the file name stem.
-            extension (str, optional): The extension to append to the file name. Defaults to 'npy'.
-
-        Returns:
-            str: Updated file name with the chosen extension.
-        """
-        return f'{self.file_path.stem}_{file_name_supplement}.{extension}'
-
-    def _check_file(
-        self,
-        file_name_supplement: str,
-        extension: str = 'npy'
+        path: Path,
     ) -> bool:
-        """Checks if a file exists in the same directory with a given file name supplement.
-
-        Args:
-            file_name_supplement (str): A string representing the file name supplement to add to the file name.
-            extension (str, optional): The extension to append to the file name. Defaults to 'npy'.
-
-        Returns:
-            bool: A boolean indicating if the file exists.
-        """
-        return self.file_path.with_name(
-            self._supplement_file_name(
-                file_name_supplement,
-                extension=extension
-            )
-        ).exists()
+        if path.exists():
+            return True
+        else:
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=False)
+            return False
 
     def save_spectra(
         self,
-        file_name_supplement: str
+        file_name: str,
     ) -> None:
         """
         Save the current array of spectra to disk.
-
-        Args:
-            file_name_supplement (str): A supplement to the filename to help differentiate the saved file.
         """
-        sprint(f"saving spectra")
-        np.save(
-            arr=self.spectra.astype(np.float16),
-            file=self.file_path.with_name(
-                self._supplement_file_name(file_name_supplement)
+        if self.overwrite:
+            sprint(f"saving spectra")
+            np.save(
+                arr=self.spectra.astype(np.float16),
+                file=self.output_dir.joinpath(f"processed_data/{file_name}.npy"),
             )
-        )
 
     def _line_intensities_to_list(self) -> None:
         """
@@ -663,7 +634,7 @@ class MapData:
                     self.line_intensities[func][line]
                 )
 
-    def _save_line_intensities(self) -> None:
+    def _save_line_intensities(self, file_path: Path) -> None:
         """
         Save the current array of emission line intensities to disk.
         """
@@ -672,33 +643,15 @@ class MapData:
         # if _check_dict_lowest_level(self.line_intensities) is not list:
         finally:
             sprint(f"saving emission line intensities")
-            with open(
-                self.file_path.with_name(
-                    self._supplement_file_name(
-                        file_name_supplement='lineIntensities',
-                        extension='json'
-                    )
-                ),
-                'w',
-                encoding='utf-8'
-            ) as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump(self.line_intensities, file)
 
-    def _load_line_intensities(self) -> None:
+    def _load_line_intensities(self, file_path: Path) -> None:
         """
         Save the current array of emission line intensities to disk.
         """
         sprint(f"loading emission line intensities")
-        with open(
-            self.file_path.with_name(
-                self._supplement_file_name(
-                    file_name_supplement='lineIntensities',
-                    extension='json'
-                )
-            ),
-            'r',
-            encoding='utf-8'
-        ) as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             self.line_intensities = json.load(file)
         self._line_intensities_to_arrays()
 
