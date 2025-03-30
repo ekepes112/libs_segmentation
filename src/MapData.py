@@ -456,6 +456,7 @@ class MapData:
     def vector_to_array(
         self,
         data: np.array,
+        fix_snaking_pattern: bool = True,
     ) -> np.array:
         """Reshapes a spectrum-wise summary statistic (e.g., integrated intensity) into an array with the map's dimensions.
 
@@ -466,14 +467,17 @@ class MapData:
             np.array: The input data with the map's dimensions.
         """
         data = data.copy().reshape(self.map_dimensions[::-1])
-        data[::2, :] = data[::2, ::-1]
+        if fix_snaking_pattern:
+            data[::2, :] = data[::2, ::-1]
         return data
 
     def array_to_vector(
         self,
         data: np.array,
+        fix_snaking_pattern: bool = True,
     ) -> np.array:
-        data[::2, :] = data[::2, ::-1]
+        if fix_snaking_pattern:
+            data[::2, :] = data[::2, ::-1]
         data = data.copy().reshape(-1)
         return data
 
